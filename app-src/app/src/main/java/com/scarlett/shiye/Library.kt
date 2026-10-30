@@ -23,16 +23,17 @@ data class Doc(
     val snippet: String, val hash: String,
     val notionUrl: String = "", val notionPageId: String = "", val notionTarget: String = "", val notionAt: Long = 0,
     val script: Boolean = false, val desktop: Boolean = false,
+    val progress: Float = 0f, val pos: Int = 0,
 ) {
     fun toJson() = JSONObject().put("id", id).put("title", title).put("type", type.name).put("main", main).put("bundle", bundle)
         .put("createdAt", createdAt).put("openedAt", openedAt).put("size", size).put("fav", fav).put("source", source)
         .put("snippet", snippet).put("hash", hash).put("notionUrl", notionUrl).put("notionPageId", notionPageId)
-        .put("notionTarget", notionTarget).put("notionAt", notionAt).put("script", script).put("desktop", desktop)
+        .put("notionTarget", notionTarget).put("notionAt", notionAt).put("script", script).put("desktop", desktop).put("progress", progress.toDouble()).put("pos", pos)
     companion object {
         fun from(j: JSONObject) = Doc(j.getString("id"), j.optString("title"), runCatching { DocType.valueOf(j.optString("type")) }.getOrDefault(DocType.MD),
             j.optString("main"), j.optBoolean("bundle"), j.optLong("createdAt"), j.optLong("openedAt"), j.optLong("size"), j.optBoolean("fav"),
             j.optString("source"), j.optString("snippet"), j.optString("hash"), j.optString("notionUrl"), j.optString("notionPageId"),
-            j.optString("notionTarget"), j.optLong("notionAt"), j.optBoolean("script"), j.optBoolean("desktop"))
+            j.optString("notionTarget"), j.optLong("notionAt"), j.optBoolean("script"), j.optBoolean("desktop"), j.optDouble("progress", 0.0).toFloat(), j.optInt("pos"))
     }
 }
 
@@ -81,6 +82,7 @@ object Library {
         val l = _docs.value.map { if (it.id == id) f(it) else it }
         persist(l); _docs.value = l
     }
+    fun setProgress(id: String, p: Float, pos: Int) { val d = get(id) ?: return; if (kotlin.math.abs(d.progress - p) > 0.002f || d.pos != pos) mutate(id) { it.copy(progress = p.coerceIn(0f, 1f), pos = pos) } }
     fun touch(id: String) = mutate(id) { it.copy(openedAt = System.currentTimeMillis()) }
     fun delete(ids: Collection<String>) = synchronized(lock) {
         ids.forEach { File(root, it).deleteRecursively() }

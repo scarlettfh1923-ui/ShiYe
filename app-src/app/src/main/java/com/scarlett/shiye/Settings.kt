@@ -36,21 +36,32 @@ fun PageScaffold(title: String, vm: AppVm, content: @Composable ColumnScope.() -
 }
 
 @Composable
-fun SettingsScreen(vm: AppVm) {
+fun MeTab(vm: AppVm) {
     val prefs = vm.prefs
     val ctx = LocalContext.current
     val docs by Library.docs.collectAsState()
     var clear by remember { mutableStateOf(false) }
     val used by produceState(0L, docs) { value = withContext(Dispatchers.IO) { Library.rootDir.walkTopDown().filter { it.isFile }.sumOf { it.length() } } }
     val ver = remember { runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "1.1.0" }
-    PageScaffold("设置", vm) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(WindowInsets.statusBars)
+        .padding(top = 16.dp, bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 120.dp).padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+      Column(Modifier.widthIn(max = 640.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+        Row(Modifier.padding(start = 6.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(52.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(P.accent, androidx.compose.ui.graphics.Color(0xFF7FA2FF)))), contentAlignment = Alignment.Center) { Ic(R.drawable.ic_user, P.onAccent, 26) }
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text("我的", color = P.text, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
+                Text("${docs.size} 篇文档 · 仅保存在本机", color = P.text3, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+            }
+        }
         Group("外观") {
             Column(Modifier.padding(16.dp)) {
                 Text("主题", color = P.text, fontSize = 16.sp, modifier = Modifier.padding(bottom = 10.dp))
                 Segmented(listOf("跟随系统", "浅色", "深色"), prefs.themeMode, { prefs.saveThemeMode(it) }, Modifier.fillMaxWidth())
             }
             Divider()
-            SwitchRow("衬线字体阅读", "用宋体风格排版正文", R.drawable.ic_text_size, prefs.serif) { prefs.saveSerif(it) }
+            Row2("阅读样式", "字体、字号、行距、段间距、阅读主题：在阅读页点「排版」调整", R.drawable.ic_text_size)
         }
         Group("同步与分享") {
             Row2("Notion 同步", if (prefs.notionReady) "已配置 · ${if (prefs.notionType == "database") "数据库" else "页面"}" else "未配置，点这里设置", R.drawable.ic_notion, onClick = { vm.push(Route.NotionSettings) })
@@ -70,8 +81,9 @@ fun SettingsScreen(vm: AppVm) {
         Group("关于") {
             Row2("拾页 $ver", "只在你点「同步到 Notion」或开启网络图片时联网", R.drawable.ic_info)
             Divider()
-            Row2("重看新手引导", null, R.drawable.ic_sparkle, onClick = { vm.pop(); prefs.resetOnboarded() })
+            Row2("重看新手引导", null, R.drawable.ic_sparkle, onClick = { prefs.resetOnboarded() })
         }
+      }
     }
     if (clear) Confirm("清空书库？", "会删除拾页里的 ${docs.size} 篇文档，原文件不受影响。此操作不能撤销。", "清空", danger = true, onOk = { Library.clearAll(); vm.toast("书库已清空") }, onDismiss = { clear = false })
 }

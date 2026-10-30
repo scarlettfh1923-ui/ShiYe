@@ -7,7 +7,8 @@ import android.graphics.Color as AColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
-import androidx.activity.compose.BackHandler
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.ui.NavDisplay
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.activity.enableEdgeToEdge
@@ -37,20 +38,27 @@ class ShiyeApp : Application() {
     }
 }
 
+/** 导航键：Navigation 3 的返回栈直接存这些不可变对象。导出面板、排版面板都是阅读页内的二级面板，不再是整页路由。 */
 sealed interface Route {
     data object Home : Route
-    data class Reader(val id: String) : Route
-    data class Xhs(val id: String) : Route
-    data class Long(val id: String) : Route
+    data class Reader(val id: String, val export: Boolean = false) : Route
     data class Edit(val id: String) : Route
-    data object Settings : Route
     data object NotionSettings : Route
 }
+
+enum class Tab { Read, Library, Me }
+enum class Filter(val label: String) { All("全部"), Md("Markdown"), Html("网页"), Fav("收藏") }
 
 class AppVm(app: Application) : AndroidViewModel(app) {
     val prefs = Prefs(app)
     val stack = mutableStateListOf<Route>(Route.Home)
     var forward by mutableStateOf(true)
+    var tab by mutableStateOf(Tab.Read)
+    var filter by mutableStateOf(Filter.All)
+    var query by mutableStateOf("")
+    var searching by mutableStateOf(false)
+    /** 阅读页临时覆盖系统栏图标深浅（夜间阅读主题下用） */
+    var barsDark by mutableStateOf<Boolean?>(null)
     var toastMsg by mutableStateOf<String?>(null); private set
     var busy by mutableStateOf<String?>(null); private set
     var notionDone by mutableStateOf<Pair<Doc, NotionResult>?>(null)
@@ -58,11 +66,11 @@ class AppVm(app: Application) : AndroidViewModel(app) {
 
     fun push(r: Route) { forward = true; stack.add(r) }
     fun pop() { if (stack.size > 1) { forward = false; stack.removeAt(stack.lastIndex) } }
-    fun openDoc(id: String) {
+    fun openDoc(id: String, export: Boolean = false) {
         val d = Library.get(id) ?: return
         Library.touch(id)
         while (stack.size > 1) stack.removeAt(stack.lastIndex)
-        forward = true; stack.add(Route.Reader(d.id))
+        forward = true; stack.add(Route.Reader(d.id, export))
     }
     fun toast(m: String) { toastMsg = m; toastJob?.cancel(); toastJob = viewModelScope.launch { delay(2600); toastMsg = null } }
 
@@ -133,31 +141,34 @@ class MainActivity : ComponentActivity() {
 fun ShiyeRoot(vm: AppVm) {
     val prefs = vm.prefs
     ShiyeTheme(prefs.themeMode) {
-        val dark = P.dark
+        val appDark = P.dark
+        val dark = vm.barsDark ?: appDark
         val ctx = LocalContext.current
         LaunchedEffect(dark) {
             (ctx.findActivity() as? ComponentActivity)?.enableEdgeToEdge(
                 statusBarStyle = if (dark) SystemBarStyle.dark(AColor.TRANSPARENT) else SystemBarStyle.light(AColor.TRANSPARENT, AColor.TRANSPARENT),
                 navigationBarStyle = if (dark) SystemBarStyle.dark(AColor.TRANSPARENT) else SystemBarStyle.light(AColor.TRANSPARENT, AColor.TRANSPARENT))
         }
-        BackHandler(enabled = vm.stack.size > 1) { vm.pop() }
         Box(Modifier.fillMaxSize().background(P.bg)) {
-            val route = vm.stack.last()
-            AnimatedContent(route, transitionSpec = {
-                val f = vm.forward
-                (fadeIn(tween(240)) + slideInHorizontally(tween(280)) { if (f) it / 7 else -it / 7 }) togetherWith
-                    (fadeOut(tween(160)) + slideOutHorizontally(tween(280)) { if (f) -it / 9 else it / 7 })
-            }, label = "route") { r ->
-                when (r) {
-                    Route.Home -> HomeScreen(vm)
-                    is Route.Reader -> ReaderScreen(vm, r.id)
-                    is Route.Xhs -> XhsScreen(vm, r.id)
-                    is Route.Long -> LongScreen(vm, r.id)
-                    is Route.Edit -> EditorScreen(vm, r.id)
-                    Route.Settings -> SettingsScreen(vm)
-                    Route.NotionSettings -> NotionScreen(vm)
-                }
-            }
+            NavDisplay(
+                backStack = vm.stack,
+                onBack = { vm.pop() },
+                transitionSpec = {
+                    (slideInHorizontally(tween(300)) { it / 6 } + fadeIn(tween(240))) togetherWith (slideOutHorizontally(tween(300)) { -it / 10 } + fadeOut(tween(180)))
+                },
+                popTransitionSpec = {
+                    (slideInHorizontally(tween(300)) { -it / 10 } + fadeIn(tween(240))) togetherWith (slideOutHorizontally(tween(300)) { it / 6 } + fadeOut(tween(180)))
+                },
+                predictivePopTransitionSpec = {
+                    (slideInHorizontally(tween(300)) { -it / 10 } + fadeIn(tween(240))) togetherWith (slideOutHorizontally(tween(300)) { it / 6 } + fadeOut(tween(180)))
+                },
+                entryProvider = entryProvider {
+                    entry<Route.Home> { HomeScreen(vm) }
+                    entry<Route.Reader> { ReaderScreen(vm, it.id, it.export) }
+                    entry<Route.Edit> { EditorScreen(vm, it.id) }
+                    entry<Route.NotionSettings> { NotionScreen(vm) }
+                },
+            )
             Toaster(vm.toastMsg, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = 96.dp))
             vm.busy?.let { BusyOverlay(it) }
             vm.notionDone?.let { (doc, res) ->

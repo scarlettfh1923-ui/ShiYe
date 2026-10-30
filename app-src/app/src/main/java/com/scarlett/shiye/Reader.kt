@@ -6,24 +6,35 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.view.ViewGroup
 import android.webkit.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -34,102 +45,108 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
+import kotlin.math.ceil
+import kotlin.math.max
+import kotlin.math.roundToInt
 
+/** 阅读页：沉浸式正文 + 点按唤出的玻璃栏。二级操作（目录 / 排版 / 编辑 / 导出）都从这里的工具条进入。 */
 @Composable
-fun ReaderScreen(vm: AppVm, id: String) {
+fun ReaderScreen(vm: AppVm, id: String, export: Boolean = false) {
     val docs by Library.docs.collectAsState()
     val doc = docs.firstOrNull { it.id == id }
     if (doc == null) { LaunchedEffect(Unit) { vm.pop() }; return }
-    if (doc.type == DocType.HTML) HtmlReader(vm, doc) else MdReader(vm, doc)
+    val isMd = doc.type == DocType.MD
+    val appPal = P
+    val pal = if (isMd) ReadThemes.pal(vm.prefs.readTheme, appPal) else appPal
+    var showExport by rememberSaveable { mutableStateOf(export) }
+    DisposableEffect(pal.dark, isMd) { if (isMd) vm.barsDark = pal.dark; onDispose { vm.barsDark = null } }
+    ShiyeThemeWith(pal) {
+        Box(Modifier.fillMaxSize().background(P.bg)) {
+            if (isMd) MdReader(vm, doc) { showExport = true } else HtmlReader(vm, doc) { showExport = true }
+        }
+        if (showExport) ExportSheet(vm, doc) { showExport = false }
+    }
 }
 
-/** 底部分享条：4 个互相独立的入口——小红书 / 长图 / Notion / 文件 */
+// ---------------- 共用：顶栏 / 菜单 / 对话框 ----------------
+
+/** 阅读页里一组弹出层的状态，MD 与网页阅读共用 */
+class ReaderUi {
+    var menu by mutableStateOf(false); var rename by mutableStateOf(false); var del by mutableStateOf(false)
+    var info by mutableStateOf(false); var link by mutableStateOf<String?>(null)
+}
+
+class MenuItem(val icon: Int, val text: String, val danger: Boolean = false, val onClick: () -> Unit)
+
 @Composable
-fun ActionDock(visible: Boolean, doc: Doc, vm: AppVm, modifier: Modifier = Modifier) {
+fun ReaderTopBar(doc: Doc, onBack: () -> Unit, ui: ReaderUi, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().glass(edge = GlassEdge.Bottom).hairline(GlassEdge.Bottom).windowInsetsPadding(WindowInsets.statusBars).height(60.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        BarIcon(R.drawable.ic_back, "返回", onClick = onBack)
+        Text(doc.title, color = P.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(horizontal = 6.dp))
+        BarIcon(if (doc.fav) R.drawable.ic_bookmark_fill else R.drawable.ic_bookmark, if (doc.fav) "取消收藏" else "收藏", tint = if (doc.fav) P.accent else P.text) { Library.mutate(doc.id) { it.copy(fav = !it.fav) } }
+        BarIcon(R.drawable.ic_more, "更多", onClick = { ui.menu = true })
+    }
+}
+
+@Composable
+private fun BarIcon(icon: Int, desc: String, tint: Color = P.text, onClick: () -> Unit) {
+    Box(Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) { Ic(icon, tint, 24) }
+}
+
+/** 工具条上的一项：图标 + 文字；primary 的图标放在主色圆底里 */
+@Composable
+fun ToolItem(icon: Int, label: String, modifier: Modifier = Modifier, primary: Boolean = false, onClick: () -> Unit) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).clickable(role = Role.Button, onClick = onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(44.dp, 32.dp).clip(Shapes.chip).background(if (primary) P.accent else Color.Transparent), contentAlignment = Alignment.Center) { Ic(icon, if (primary) P.onAccent else P.text, 22) }
+        Text(label, color = if (primary) P.accent else P.text2, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+@Composable
+fun BoxScope.ReaderMenu(vm: AppVm, doc: Doc, ui: ReaderUi, extras: List<MenuItem> = emptyList()) {
     val ctx = LocalContext.current
-    AnimatedVisibility(visible, modifier, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
-        Row(Modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(start = 18.dp, end = 18.dp, bottom = 14.dp).fillMaxWidth().glass(RoundedCornerShape(30.dp), floating = true).padding(horizontal = 6.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            DockItem(R.drawable.ic_cards, "小红书", Modifier.weight(1f)) { vm.push(Route.Xhs(doc.id)) }
-            DockItem(R.drawable.ic_long_image, "长图", Modifier.weight(1f)) { vm.push(Route.Long(doc.id)) }
-            DockItem(R.drawable.ic_notion, if (doc.notionUrl.isNotBlank()) "再同步" else "Notion", Modifier.weight(1f)) { vm.syncNotion(doc) }
-            DockItem(R.drawable.ic_file_out, if (doc.type == DocType.HTML) "HTML 文件" else "MD 文件", Modifier.weight(1f)) {
-                if (!runCatching { Share.file(ctx, doc) }.getOrDefault(false)) vm.toast("文件不存在，无法分享")
+    BackHandler(ui.menu) { ui.menu = false }
+    AnimatedVisibility(ui.menu, Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.22f)).pointerInput(Unit) { detectTapGestures { ui.menu = false } })
+    }
+    AnimatedVisibility(ui.menu, Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.statusBars).padding(top = 54.dp, end = 12.dp),
+        enter = fadeIn() + scaleIn(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f), initialScale = 0.9f), exit = fadeOut()) {
+        val items = buildList {
+            add(MenuItem(R.drawable.ic_copy, "复制全文") { Share.copyText(ctx, Library.readText(doc)); vm.toast("已复制全文") })
+            add(MenuItem(R.drawable.ic_edit, "重命名") { ui.rename = true })
+            add(MenuItem(R.drawable.ic_info, "文档信息") { ui.info = true })
+            if (doc.notionUrl.isNotBlank()) add(MenuItem(R.drawable.ic_notion, "在 Notion 打开") { Share.openUrl(ctx, doc.notionUrl) })
+            addAll(extras)
+            add(MenuItem(R.drawable.ic_trash, "删除", danger = true) { ui.del = true })
+        }
+        Column(Modifier.width(214.dp).shadow(22.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x331B2A4D), spotColor = Color(0x331B2A4D)).clip(RoundedCornerShape(20.dp)).background(P.surface).padding(vertical = 8.dp)) {
+            items.forEach { it ->
+                if (it.danger) Box(Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 16.dp).height(0.7.dp).background(P.line))
+                Row(Modifier.fillMaxWidth().clickable { ui.menu = false; it.onClick() }.padding(horizontal = 18.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Ic(it.icon, if (it.danger) P.danger else P.text2, 21); Spacer(Modifier.width(14.dp))
+                    Text(it.text, color = if (it.danger) P.danger else P.text, style = MaterialTheme.typography.bodyLarge)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DockItem(icon: Int, label: String, modifier: Modifier = Modifier, tint: androidx.compose.ui.graphics.Color = P.text, onClick: () -> Unit) {
-    Column(modifier.clip(RoundedCornerShape(22.dp)).clickable(onClick = onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Ic(icon, tint, 22); Text(label, color = P.text2, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
-    }
-}
-
-/** 阅读设置：字号 / 行距 / 段间距（行距与段间距相邻，可一起调）/ 字体 / 主题；改动立即全局生效 */
-@Composable
-fun TypographySheet(prefs: Prefs, onDismiss: () -> Unit) {
-    Sheet(onDismiss) {
-        Row(Modifier.padding(start = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("阅读设置", color = P.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            Text("恢复默认", color = P.accent, fontSize = 13.5.sp, modifier = Modifier.clip(Shapes.chip).clickable { prefs.resetTypography() }.padding(horizontal = 10.dp, vertical = 6.dp))
-        }
-        // 预览：用当前的行距和段间距排两段
-        val st = ReadStyle(prefs.fontScale, prefs.serif, false, null, {}, lineMult = prefs.lineHeight, paraEm = prefs.paraSpacing)
-        Column(Modifier.fillMaxWidth().clip(Shapes.box).background(P.field).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(st.gap)) {
-            val ff = if (prefs.serif) androidx.compose.ui.text.font.FontFamily.Serif else androidx.compose.ui.text.font.FontFamily.Default
-            Text("把喜欢的文字收进来，慢慢读。好的排版，是让眼睛可以放松的地方。", color = P.text, fontSize = (15f * prefs.fontScale).sp, lineHeight = (15f * prefs.fontScale * prefs.lineHeight).sp, fontFamily = ff)
-            Text("行距与段间距可以一起调，直到读起来最舒服。", color = P.text2, fontSize = (15f * prefs.fontScale).sp, lineHeight = (15f * prefs.fontScale * prefs.lineHeight).sp, fontFamily = ff)
-        }
-        Spacer(Modifier.height(8.dp))
-        TypoSlider("字号", "A", "A", prefs.fontScale, 0.8f..1.6f, "%.0f%%".format(prefs.fontScale * 100)) { prefs.saveFontScale(it) }
-        TypoSlider("行距", "紧", "松", prefs.lineHeight, 1.2f..2.2f, "%.2f×".format(prefs.lineHeight)) { prefs.saveLineHeight(it) }
-        TypoSlider("段间距", "0", "1.5", prefs.paraSpacing, 0f..1.5f, "%.2f em".format(prefs.paraSpacing)) { prefs.saveParaSpacing(it) }
-        Spacer(Modifier.height(6.dp))
-        Segmented(listOf("无衬线", "衬线"), if (prefs.serif) 1 else 0, { prefs.saveSerif(it == 1) }, Modifier.fillMaxWidth())
-        Spacer(Modifier.height(10.dp))
-        Segmented(listOf("跟随系统", "浅色", "深色"), prefs.themeMode, { prefs.saveThemeMode(it) }, Modifier.fillMaxWidth())
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth().clip(Shapes.box).clickable { prefs.saveMdNet(!prefs.mdNet) }.padding(6.dp, 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("加载网络图片", color = P.text, fontSize = 15.sp, modifier = Modifier.weight(1f))
-            androidx.compose.material3.Switch(prefs.mdNet, { prefs.saveMdNet(it) })
-        }
-    }
-}
-
-@Composable
-private fun TypoSlider(label: String, lo: String, hi: String, v: Float, range: ClosedFloatingPointRange<Float>, shown: String, onChange: (Float) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = P.text, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).padding(start = 6.dp))
-            Text(shown, color = P.accent, fontSize = 13.5.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(end = 6.dp))
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(lo, color = P.text3, fontSize = 12.sp, modifier = Modifier.width(22.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            Slider(v, onChange, valueRange = range, modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                colors = SliderDefaults.colors(thumbColor = P.accent, activeTrackColor = P.accent, inactiveTrackColor = P.field))
-            Text(hi, color = P.text3, fontSize = 12.sp, modifier = Modifier.width(22.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-fun DocMenuSheet(doc: Doc, vm: AppVm, onDismiss: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, extra: (@Composable ColumnScope.() -> Unit)? = null, onAa: (() -> Unit)? = null, onToc: (() -> Unit)? = null) {
-    val ctx = LocalContext.current
-    Sheet(onDismiss) {
-        Text(doc.title, color = P.text, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 6.dp, bottom = 8.dp, top = 2.dp))
-        val scope = rememberCoroutineScope()
-        SheetAction(if (doc.fav) R.drawable.ic_bookmark_fill else R.drawable.ic_bookmark, if (doc.fav) "取消收藏" else "收藏") { onDismiss(); Library.mutate(doc.id) { it.copy(fav = !it.fav) } }
-        if (onAa != null) SheetAction(R.drawable.ic_text_size, "排版（字号 · 行距 · 段间距）") { onDismiss(); onAa() }
-        if (onToc != null) SheetAction(R.drawable.ic_toc, "目录") { onDismiss(); onToc() }
-        SheetAction(R.drawable.ic_edit, "编辑原文") { onDismiss(); vm.push(Route.Edit(doc.id)) }
-        extra?.invoke(this)
-        SheetAction(R.drawable.ic_copy, "复制全文") { onDismiss(); scope.launch { val t = withContext(Dispatchers.IO) { Library.readText(doc) }; Share.copyText(ctx, t); vm.toast("已复制全文") } }
-        SheetAction(R.drawable.ic_share, "分享文字") { onDismiss(); scope.launch { val t = withContext(Dispatchers.IO) { Library.readText(doc) }; Share.shareText(ctx, doc.title, t.take(200_000)) } }
-        if (doc.notionUrl.isNotBlank()) SheetAction(R.drawable.ic_link, "在 Notion 打开") { onDismiss(); Share.openUrl(ctx, doc.notionUrl) }
-        SheetAction(R.drawable.ic_text_size, "重命名") { onDismiss(); onRename() }
-        SheetAction(R.drawable.ic_trash, "删除", danger = true) { onDismiss(); onDelete() }
-    }
+fun ReaderDialogs(vm: AppVm, doc: Doc, ui: ReaderUi) {
+    if (ui.rename) TextPrompt("重命名", doc.title, "保存", { v -> if (v.isNotBlank()) Library.mutate(doc.id) { it.copy(title = v.trim().take(120)) } }, { ui.rename = false })
+    if (ui.del) Confirm("删除这篇文档？", "「${doc.title}」会从拾页移除。", "删除", danger = true, onOk = { vm.pop(); Library.delete(listOf(doc.id)); vm.toast("已删除") }, onDismiss = { ui.del = false })
+    if (ui.info) AlertDialog(onDismissRequest = { ui.info = false }, containerColor = P.surface, shape = RoundedCornerShape(24.dp),
+        title = { Text("文档信息", color = P.text, style = MaterialTheme.typography.titleLarge) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("类型" to if (doc.type == DocType.HTML) "网页 HTML" else "Markdown", "大小" to fmtSize(doc.size), "来源" to doc.source.ifBlank { "—" },
+                    "存入" to relDate(doc.createdAt), "同步" to (if (doc.notionUrl.isNotBlank()) "Notion · " + fmtAgo(doc.notionAt) else "未同步")).forEach { (k, v) ->
+                    Row { Text(k, color = P.text3, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(56.dp)); Text(v, color = P.text, style = MaterialTheme.typography.bodyMedium) }
+                }
+            }
+        },
+        confirmButton = { TextButton({ ui.info = false }) { Text("好的", color = P.accent, fontWeight = FontWeight.SemiBold) } })
+    LinkGuard(ui.link) { ui.link = null }
 }
 
 @Composable
@@ -140,80 +157,218 @@ private fun LinkGuard(url: String?, onClose: () -> Unit) {
 
 private fun relDate(t: Long) = java.text.SimpleDateFormat("yyyy年M月d日", java.util.Locale.CHINA).format(java.util.Date(t))
 
+// ---------------- Markdown 阅读 ----------------
+
+private class Head(val item: Int, val level: Int, val title: String)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MdReader(vm: AppVm, doc: Doc) {
+fun MdReader(vm: AppVm, doc: Doc, onExport: () -> Unit) {
     val prefs = vm.prefs
-    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val text by produceState<String?>(null, doc.id) { value = withContext(Dispatchers.IO) { Library.readText(doc) } }
     val blocks = remember(text) { text?.let { Markdown.parse(it) }.orEmpty().let { b -> val f = b.firstOrNull(); if (f is MdBlock.Heading && f.level == 1 && f.segs.plain().trim() == doc.title.trim()) b.drop(1) else b } }
     val tags = remember(text) { text?.let { Markdown.tags(Markdown.stripFrontMatter(it).second) }.orEmpty() }
-    val state = rememberLazyListState()
+    val heads = remember(blocks) { blocks.mapIndexedNotNull { i, b -> if (b is MdBlock.Heading && b.level <= 3) Head(i + 1, b.level, b.segs.plain()) else null } }
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = doc.pos)
     val backdrop = remember { Backdrop() }
-    var dock by remember { mutableStateOf(true) }
-    var showToc by remember { mutableStateOf(false) }; var showAa by remember { mutableStateOf(false) }; var showMenu by remember { mutableStateOf(false) }
-    var rename by remember { mutableStateOf(false) }; var del by remember { mutableStateOf(false) }
-    var link by remember { mutableStateOf<String?>(null) }
+    val ui = remember { ReaderUi() }
+    var chrome by rememberSaveable { mutableStateOf(false) }
+    var showToc by remember { mutableStateOf(false) }; var showAa by remember { mutableStateOf(false) }
+    var scrub by remember { mutableStateOf<Float?>(null) }
+    val style = ReadStyle(prefs.fontScale, prefs.serif, prefs.mdNet, Library.mainFile(doc).parentFile, onLink = { u ->
+        if (u.startsWith("https://") || u.startsWith("http://")) ui.link = u else vm.toast("已拦截不支持的链接")
+    }, lineMult = prefs.lineHeight, paraEm = prefs.paraSpacing)
+
+    val progress by remember { derivedStateOf {
+        val info = state.layoutInfo; val n = info.totalItemsCount
+        if (n <= 1) 0f else if (!state.canScrollForward) 1f else {
+            val first = info.visibleItemsInfo.firstOrNull()
+            val frac = if (first != null && first.size > 0) state.firstVisibleItemScrollOffset.toFloat() / first.size else 0f
+            ((state.firstVisibleItemIndex + frac) / (n - 1)).coerceIn(0f, 1f)
+        }
+    } }
+    val curHead by remember(heads) { derivedStateOf { heads.lastOrNull { it.item <= state.firstVisibleItemIndex } } }
+    val sectionNo by remember(heads) { derivedStateOf { heads.indexOfFirst { it === curHead } + 1 } }
+    val minutesLeft = ceil(readMinutes(doc.size) * (1f - progress).toDouble()).toInt()
+
     LaunchedEffect(state) {
         var last = 0
         snapshotFlow { state.firstVisibleItemIndex * 100000 + state.firstVisibleItemScrollOffset }.collect { v ->
-            if (v - last > 40) dock = false else if (last - v > 40) dock = true
-            if (v < 100000 / 4 && state.firstVisibleItemIndex == 0) dock = true
+            if (scrub == null && kotlin.math.abs(v - last) > 40 && last != 0) chrome = false
             last = v
         }
     }
-    val progress by remember { derivedStateOf { val n = state.layoutInfo.totalItemsCount; if (n <= 1) 0f else (state.firstVisibleItemIndex.toFloat() / (n - 1)).coerceIn(0f, 1f) } }
-    val style = ReadStyle(prefs.fontScale, prefs.serif, prefs.mdNet, Library.mainFile(doc).parentFile, onLink = { u ->
-        if (u.startsWith("https://") || u.startsWith("http://")) link = u else vm.toast("已拦截不支持的链接")
-    }, lineMult = prefs.lineHeight, paraEm = prefs.paraSpacing)
-    val titleShown by remember { derivedStateOf { state.firstVisibleItemIndex > 0 } }
-    val headings = remember(blocks) { blocks.mapIndexedNotNull { i, b -> if (b is MdBlock.Heading && b.level <= 3) i to b else null } }
+    // 阅读位置：停下 1.2 秒后记一次；离开时再记一次
+    LaunchedEffect(state) { snapshotFlow { progress to state.firstVisibleItemIndex }.collect { (p, i) -> delay(1200); Library.setProgress(doc.id, p, i) } }
+    DisposableEffect(Unit) { onDispose { Library.setProgress(doc.id, progress, state.firstVisibleItemIndex) } }
+    BackHandler(chrome && !ui.menu) { chrome = false }
 
     CompositionLocalProvider(LocalBackdrop provides backdrop) {
-        Box(Modifier.fillMaxSize()) {
-            if (text == null) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { androidx.compose.material3.CircularProgressIndicator(color = P.accent, strokeWidth = 2.5.dp, modifier = Modifier.size(28.dp)) }
-            else SelectionContainer(Modifier.glassSource(backdrop)) {
-                LazyColumn(state = state, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(style.gap),
-                    contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 72.dp, bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 130.dp)) {
-                    item(key = "title") {
-                        Column(Modifier.padding(bottom = 6.dp)) {
-                            Text(doc.title, color = P.text, fontSize = (28 * prefs.fontScale.coerceAtMost(1.25f)).sp, lineHeight = (37 * prefs.fontScale.coerceAtMost(1.25f)).sp, fontWeight = FontWeight.ExtraBold,
-                                fontFamily = if (prefs.serif) androidx.compose.ui.text.font.FontFamily.Serif else androidx.compose.ui.text.font.FontFamily.Default)
-                            Text("${doc.source} · ${relDate(doc.createdAt)} · 约 ${readMinutes(doc.size)} 分钟", color = P.text3, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
-                            if (tags.isNotEmpty()) Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                tags.take(5).forEach { Text("# $it", color = P.accent, fontSize = 12.sp, modifier = Modifier.clip(Shapes.chip).background(P.accentSoft).padding(horizontal = 10.dp, vertical = 4.dp)) }
+        BoxWithConstraints(Modifier.fillMaxSize().background(P.bg)) {
+            val side = maxOf(24.dp, (maxWidth - 680.dp) / 2)
+            val statusH = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val navH = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            Box(Modifier.fillMaxSize().glassSource(backdrop).pointerInput(Unit) { detectTapGestures(onTap = { chrome = !chrome }) }) {
+                if (text == null) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = P.accent, strokeWidth = 2.5.dp, modifier = Modifier.size(28.dp)) }
+                else SelectionContainer {
+                    LazyColumn(state = state, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(style.gap),
+                        contentPadding = PaddingValues(start = side, end = side, top = statusH + 44.dp, bottom = navH + 120.dp)) {
+                        item(key = "title") {
+                            Column(Modifier.padding(bottom = 8.dp)) {
+                                val s = prefs.fontScale.coerceAtMost(1.25f)
+                                Text(doc.title, color = P.text, fontSize = (27 * s).sp, lineHeight = (37 * s).sp, fontWeight = FontWeight.ExtraBold, fontFamily = if (prefs.serif) FontFamily.Serif else FontFamily.Default)
+                                Text("${doc.source} · ${relDate(doc.createdAt)} · 约 ${readMinutes(doc.size)} 分钟", color = P.text3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
+                                if (tags.isNotEmpty()) Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    tags.take(5).forEach { Text("# $it", color = P.accent, style = MaterialTheme.typography.labelMedium, modifier = Modifier.clip(Shapes.chip).background(P.accentSoft).padding(horizontal = 10.dp, vertical = 4.dp)) }
+                                }
                             }
                         }
+                        items(blocks.size) { i -> Block(blocks[i], style) }
+                        item(key = "end") { Text("— 读完了 —", color = P.text3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(top = 28.dp), textAlign = TextAlign.Center) }
                     }
-                    items(blocks.size) { i -> Block(blocks[i], style) }
-                    item(key = "end") { Text("— 读完了 —", color = P.text3, fontSize = 12.5.sp, modifier = Modifier.fillMaxWidth().padding(top = 24.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
                 }
             }
-            Column(Modifier.align(Alignment.TopCenter)) {
-                TopBar(doc.title, { vm.pop() }, titleAlpha = if (titleShown) 1f else 0f) {
-                    CircleBtn(R.drawable.ic_share, "分享", { dock = true }, glass = true, size = 40); Spacer(Modifier.width(8.dp))
-                    CircleBtn(R.drawable.ic_more, "更多", { showMenu = true }, glass = true, size = 40)
+            // 沉浸态：极淡的页眉 / 页脚，不抢正文
+            AnimatedVisibility(!chrome, Modifier.align(Alignment.TopCenter), enter = fadeIn(), exit = fadeOut()) {
+                Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(P.bg, P.bg.copy(alpha = 0.9f), Color.Transparent))).padding(top = statusH + 8.dp, bottom = 18.dp, start = side, end = side)) {
+                    Text(curHead?.title ?: doc.title, color = P.text3, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
-                Box(Modifier.fillMaxWidth(progress).height(2.dp).background(P.accent))
             }
-            ActionDock(dock, doc, vm, Modifier.align(Alignment.BottomCenter))
+            AnimatedVisibility(!chrome, Modifier.align(Alignment.BottomCenter), enter = fadeIn(), exit = fadeOut()) {
+                Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, P.bg.copy(alpha = 0.9f), P.bg)))) {
+                    Spacer(Modifier.height(18.dp))
+                    Row(Modifier.padding(horizontal = side).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(doc.title, color = P.text3, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text("${(progress * 100).toInt()}%  ·  " + if (minutesLeft <= 0) "即将读完" else "还剩 $minutesLeft 分钟", color = P.text3, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 12.dp))
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Box(Modifier.fillMaxWidth().height(2.dp).background(P.line.copy(alpha = 0.6f))) { Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(P.accent)) }
+                    Spacer(Modifier.height(navH))
+                }
+            }
+            // 点按唤出的玻璃栏
+            AnimatedVisibility(chrome, Modifier.align(Alignment.TopCenter), enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut() + slideOutVertically { -it / 2 }) {
+                ReaderTopBar(doc, { vm.pop() }, ui)
+            }
+            AnimatedVisibility(chrome, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
+                Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(start = 14.dp, end = 14.dp, bottom = 10.dp).widthIn(max = 560.dp).fillMaxWidth().glass(RoundedCornerShape(30.dp), floating = true).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (sectionNo > 0) "第 $sectionNo 节 · ${curHead?.title.orEmpty()}" else doc.title, color = P.text2, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text(if (minutesLeft <= 0) "即将读完" else "还剩约 $minutesLeft 分钟", color = P.text3, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 12.dp))
+                    }
+                    val colors = SliderDefaults.colors(thumbColor = P.accent, activeTrackColor = P.accent, inactiveTrackColor = P.line)
+                    Slider(value = scrub ?: progress, onValueChange = { v ->
+                        scrub = v
+                        val n = state.layoutInfo.totalItemsCount
+                        if (n > 1) scope.launch { state.scrollToItem((v * (n - 1)).toInt().coerceIn(0, n - 1)) }
+                    }, onValueChangeFinished = { scrub = null }, modifier = Modifier.height(32.dp), colors = colors,
+                        thumb = { Box(Modifier.size(22.dp).shadow(3.dp, CircleShape).clip(CircleShape).background(Color.White).border(5.dp, P.accent, CircleShape)) },
+                        track = { s -> SliderDefaults.Track(s, Modifier.height(4.dp), colors = colors, thumbTrackGapSize = 0.dp, trackInsideCornerSize = 0.dp, drawStopIndicator = null) })
+                    Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                        ToolItem(R.drawable.ic_toc, "目录", Modifier.weight(1f)) { showToc = true }
+                        ToolItem(R.drawable.ic_text_size, "排版", Modifier.weight(1f)) { showAa = true }
+                        ToolItem(R.drawable.ic_edit, "编辑", Modifier.weight(1f)) { vm.push(Route.Edit(doc.id)) }
+                        ToolItem(R.drawable.ic_share, "分享", Modifier.weight(1f), primary = true) { onExport() }
+                    }
+                }
+            }
+            ReaderMenu(vm, doc, ui)
         }
     }
-    if (showToc) Sheet({ showToc = false }) {
-        Text("目录", color = P.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, bottom = 8.dp))
-        if (headings.isEmpty()) Text("这篇文档没有标题层级。", color = P.text3, fontSize = 14.sp, modifier = Modifier.padding(6.dp, 12.dp))
-        Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-            headings.forEach { (i, h) ->
-                Text(h.segs.plain(), color = if (h.level == 1) P.text else P.text2, fontSize = if (h.level == 1) 16.sp else 15.sp, fontWeight = if (h.level == 1) FontWeight.SemiBold else FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth().clip(Shapes.box).clickable { showToc = false; scope.launch { state.animateScrollToItem(i + 1) } }.padding(start = (6 + (h.level - 1) * 16).dp, top = 12.dp, bottom = 12.dp, end = 6.dp))
-            }
-        }
-    }
+    if (showToc) TocSheet(heads, curHead, onPick = { showToc = false; scope.launch { state.animateScrollToItem(it) } }, onDismiss = { showToc = false })
     if (showAa) TypographySheet(prefs) { showAa = false }
-    if (showMenu) DocMenuSheet(doc, vm, { showMenu = false }, { rename = true }, { del = true }, onAa = { showAa = true }, onToc = { showToc = true })
-    if (rename) TextPrompt("重命名", doc.title, "保存", { v -> if (v.isNotBlank()) Library.mutate(doc.id) { it.copy(title = v.trim().take(120)) } }, { rename = false })
-    if (del) Confirm("删除这篇文档？", "「${doc.title}」会从拾页移除。", "删除", danger = true, onOk = { vm.pop(); Library.delete(listOf(doc.id)); vm.toast("已删除") }, onDismiss = { del = false })
-    LinkGuard(link) { link = null }
+    ReaderDialogs(vm, doc, ui)
+}
+
+@Composable
+private fun TocSheet(heads: List<Head>, cur: Head?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+    Sheet(onDismiss) {
+        Text("目录", color = P.text, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
+        if (heads.isEmpty()) Text("这篇文档没有标题层级。", color = P.text3, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(6.dp, 12.dp))
+        heads.forEach { h ->
+            val on = h === cur
+            Row(Modifier.fillMaxWidth().clip(Shapes.box).background(if (on) P.accentSoft else Color.Transparent).clickable { onPick(h.item) }.padding(start = (12 + (h.level - 1) * 18).dp, top = 13.dp, bottom = 13.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(h.title, color = if (on) P.accent else if (h.level == 1) P.text else P.text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                    style = if (h.level == 1) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal))
+                if (on) Ic(R.drawable.ic_check, P.accent, 18)
+            }
+        }
+    }
+}
+
+private fun trim(v: Float) = "%.2f".format(v).trimEnd('0').trimEnd('.')
+
+/** 排版：阅读主题 / 字体 / 字号 · 行距 · 段间距。压在阅读页上，不挡遮罩，调的时候后面的正文实时变化。 */
+@Composable
+fun TypographySheet(prefs: Prefs, onDismiss: () -> Unit) {
+    Sheet(onDismiss, scrim = Color.Transparent) {
+        Row(Modifier.padding(start = 4.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("排版", color = P.text, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f))
+            Text("重置", color = P.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clip(Shapes.chip).clickable { prefs.resetTypography() }.padding(horizontal = 14.dp, vertical = 8.dp))
+        }
+        SheetLabel("阅读主题")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ReadThemes.names.forEachIndexed { i, n ->
+                val on = prefs.readTheme == i; val (bg, fg) = ReadThemes.swatch[i]
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable { prefs.saveReadTheme(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(16.dp)).background(bg).border(if (on) 2.5.dp else 1.dp, if (on) P.accent else P.line, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                        Text("Aa", color = fg, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    Text(n, color = if (on) P.accent else P.text2, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), modifier = Modifier.padding(top = 6.dp))
+                }
+            }
+        }
+        SheetLabel("字体")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf("黑体" to false, "宋体" to true).forEach { (n, serif) ->
+                val on = prefs.serif == serif
+                Row(Modifier.height(44.dp).clip(Shapes.chip).background(if (on) P.accentSoft else P.field).then(if (on) Modifier.border(1.5.dp, P.accent, Shapes.chip) else Modifier)
+                    .clickable { prefs.saveSerif(serif) }.padding(horizontal = 22.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (on) { Ic(R.drawable.ic_check, P.accent, 17); Spacer(Modifier.width(6.dp)) }
+                    Text(n, color = if (on) P.accent else P.text, fontSize = 16.sp, fontFamily = if (serif) FontFamily.Serif else FontFamily.Default, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium)
+                }
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        val px = (17 * prefs.fontScale).roundToInt()
+        Stepper("字号", "$px", when { px < 16 -> "偏小"; px <= 18 -> "标准"; px <= 21 -> "偏大"; else -> "很大" }, px > 14, px < 27,
+            { prefs.saveFontScale((px - 1) / 17f) }, { prefs.saveFontScale((px + 1) / 17f) })
+        Spacer(Modifier.height(10.dp))
+        val lh = prefs.lineHeight
+        Stepper("行距", trim(lh), when { lh < 1.5f -> "紧凑"; lh < 1.9f -> "舒适"; else -> "宽松" }, lh > 1.21f, lh < 2.19f,
+            { prefs.saveLineHeight(((lh - 0.1f) * 10).roundToInt() / 10f) }, { prefs.saveLineHeight(((lh + 0.1f) * 10).roundToInt() / 10f) })
+        Spacer(Modifier.height(10.dp))
+        val ps = prefs.paraSpacing
+        Stepper("段间距", trim(ps) + " em", when { ps < 0.3f -> "紧密"; ps < 0.9f -> "适中"; else -> "宽松" }, ps > 0.01f, ps < 1.49f,
+            { prefs.saveParaSpacing(((ps - 0.1f) * 10).roundToInt() / 10f) }, { prefs.saveParaSpacing(((ps + 0.1f) * 10).roundToInt() / 10f) })
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun SheetLabel(t: String) = Text(t, color = P.text3, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 4.dp, top = 14.dp, bottom = 10.dp))
+
+@Composable
+fun Stepper(label: String, value: String, desc: String, canMinus: Boolean, canPlus: Boolean, onMinus: () -> Unit, onPlus: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = P.text2, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(60.dp).padding(start = 4.dp))
+        Row(Modifier.weight(1f).height(54.dp).clip(Shapes.chip).background(P.field).padding(horizontal = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+            StepBtn(R.drawable.ic_minus, "减小$label", canMinus, onMinus)
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Text(value, color = P.text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Text("  $desc", color = P.text3, style = MaterialTheme.typography.bodySmall)
+            }
+            StepBtn(R.drawable.ic_plus, "增大$label", canPlus, onPlus)
+        }
+    }
+}
+
+@Composable
+private fun StepBtn(icon: Int, desc: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(Modifier.size(40.dp).clip(CircleShape).background(P.surface).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) {
+        Ic(icon, if (enabled) P.text else P.text3.copy(alpha = 0.5f), 20)
+    }
 }
 
 // ---------------- HTML 阅读：加固的 WebView ----------------
@@ -242,14 +397,13 @@ private fun docHandler(doc: Doc) = WebViewAssetLoader.PathHandler { path ->
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun HtmlReader(vm: AppVm, doc: Doc) {
+fun HtmlReader(vm: AppVm, doc: Doc, onExport: () -> Unit) {
     val prefs = vm.prefs
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    var dock by remember { mutableStateOf(true) }
-    var link by remember { mutableStateOf<String?>(null) }
+    var chrome by remember { mutableStateOf(true) }
+    val ui = remember { ReaderUi() }
     var askScript by remember { mutableStateOf(false) }
-    var showMenu by remember { mutableStateOf(false) }; var rename by remember { mutableStateOf(false) }; var del by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var landscape by remember { mutableStateOf(false) }
     val activity = ctx.findActivity()
@@ -294,7 +448,7 @@ fun HtmlReader(vm: AppVm, doc: Doc) {
                             val u = request.url
                             if (u.host == ASSET_HOST && (u.path ?: "").startsWith("/lib/${doc.id}/")) return false
                             val s = u.toString()
-                            if (s.startsWith("https://") || s.startsWith("http://")) link = s else vm.toast("已拦截不支持的链接")
+                            if (s.startsWith("https://") || s.startsWith("http://")) ui.link = s else vm.toast("已拦截不支持的链接")
                             return true
                         }
                         override fun onPageFinished(view: WebView, u: String?) {
@@ -314,27 +468,27 @@ fun HtmlReader(vm: AppVm, doc: Doc) {
                         }
                         override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean { vm.toast("网页渲染中断了，已关闭"); vm.pop(); return true }
                     }
-                    setOnScrollChangeListener { _, _, y, _, oy -> if (y - oy > 12) dock = false else if (oy - y > 12) dock = true }
+                    setOnScrollChangeListener { _, _, y, _, oy -> if (y - oy > 12) chrome = false else if (oy - y > 12) chrome = true }
                     loadUrl(url)
                 }
             }, onRelease = { it.stopLoading(); it.destroy() })
         }
         if (loading) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = top), color = P.accent, trackColor = androidx.compose.ui.graphics.Color.Transparent)
-        TopBar(doc.title, { vm.pop() }, Modifier.align(Alignment.TopCenter)) {
-            CircleBtn(R.drawable.ic_share, "分享", { dock = true }, glass = true, size = 40); Spacer(Modifier.width(8.dp))
-            CircleBtn(R.drawable.ic_more, "更多", { showMenu = true }, glass = true, size = 40)
-        }
         if (doc.script) Row(Modifier.align(Alignment.TopCenter).padding(top = top + 8.dp).clip(Shapes.chip).background(P.accent).padding(horizontal = 12.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("脚本已开启", color = P.onAccent, fontSize = 12.sp)
+            Text("脚本已开启", color = P.onAccent, style = MaterialTheme.typography.labelMedium)
         }
-        ActionDock(dock, doc, vm, Modifier.align(Alignment.BottomCenter))
+        AnimatedVisibility(chrome, Modifier.align(Alignment.TopCenter), enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut() + slideOutVertically { -it / 2 }) { ReaderTopBar(doc, { vm.pop() }, ui) }
+        AnimatedVisibility(chrome, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
+            Row(Modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(start = 14.dp, end = 14.dp, bottom = 10.dp).widthIn(max = 420.dp).fillMaxWidth().glass(RoundedCornerShape(30.dp), floating = true).padding(horizontal = 16.dp, vertical = 8.dp)) {
+                ToolItem(R.drawable.ic_edit, "编辑", Modifier.weight(1f)) { vm.push(Route.Edit(doc.id)) }
+                ToolItem(R.drawable.ic_share, "分享", Modifier.weight(1f), primary = true) { onExport() }
+            }
+        }
+        ReaderMenu(vm, doc, ui, listOf(
+            MenuItem(R.drawable.ic_code, if (doc.script) "关闭脚本" else "开启脚本") { if (doc.script) Library.mutate(doc.id) { it.copy(script = false) } else askScript = true },
+            MenuItem(R.drawable.ic_desktop, if (doc.desktop) "手机版网页" else "电脑版网页") { Library.mutate(doc.id) { it.copy(desktop = !it.desktop) } },
+            MenuItem(R.drawable.ic_rotate, if (landscape) "恢复竖屏" else "横屏阅读") { landscape = !landscape }))
     }
     if (askScript) Confirm("开启这篇网页的脚本？", "脚本能让交互式页面正常工作，但网页里的代码会在这里运行。只对你信任的来源开启，之后可随时在顶栏关闭。", "开启", onOk = { Library.mutate(doc.id) { it.copy(script = true) }; loading = true }, onDismiss = { askScript = false })
-    if (showMenu) DocMenuSheet(doc, vm, { showMenu = false }, { rename = true }, { del = true }, extra = {
-        SheetAction(R.drawable.ic_code, if (doc.script) "关闭脚本" else "开启脚本") { showMenu = false; if (doc.script) Library.mutate(doc.id) { it.copy(script = false) } else askScript = true }
-        SheetAction(R.drawable.ic_desktop, if (doc.desktop) "手机版网页" else "电脑版网页") { showMenu = false; Library.mutate(doc.id) { it.copy(desktop = !it.desktop) } }
-        SheetAction(R.drawable.ic_rotate, if (landscape) "恢复竖屏" else "横屏阅读") { showMenu = false; landscape = !landscape } })
-    if (rename) TextPrompt("重命名", doc.title, "保存", { v -> if (v.isNotBlank()) Library.mutate(doc.id) { it.copy(title = v.trim().take(120)) } }, { rename = false })
-    if (del) Confirm("删除这篇文档？", "「${doc.title}」会从拾页移除。", "删除", danger = true, onOk = { vm.pop(); Library.delete(listOf(doc.id)); vm.toast("已删除") }, onDismiss = { del = false })
-    LinkGuard(link) { link = null }
+    ReaderDialogs(vm, doc, ui)
 }

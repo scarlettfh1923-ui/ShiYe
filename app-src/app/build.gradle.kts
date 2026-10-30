@@ -11,10 +11,10 @@ val signProps = Properties().apply {
 }
 android {
   namespace = "com.scarlett.shiye"
-  compileSdk = 35
+  compileSdk = 36
   defaultConfig {
     applicationId = "com.scarlett.shiye"
-    minSdk = 29; targetSdk = 35; versionCode = 2; versionName = "1.1.0"
+    minSdk = 29; targetSdk = 35; versionCode = 3; versionName = "2.0.0"
   }
   signingConfigs {
     if (signProps.isNotEmpty()) create("release") {
@@ -38,16 +38,18 @@ android {
   testOptions { unitTests.isReturnDefaultValues = true; unitTests.isIncludeAndroidResources = true }
 }
 dependencies {
-  val bom = platform("androidx.compose:compose-bom:2024.09.00")
+  val bom = platform("androidx.compose:compose-bom:2025.10.00")
   implementation(bom)
   implementation("androidx.compose.material3:material3")
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.foundation:foundation")
   implementation("dev.chrisbanes.haze:haze:1.1.1")
-  implementation("androidx.activity:activity-compose:1.9.2")
-  implementation("androidx.core:core-ktx:1.13.1")
-  implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.5")
-  implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
+  implementation("androidx.activity:activity-compose:1.12.0")
+  implementation("androidx.core:core-ktx:1.17.0")
+  implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+  implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+  implementation("androidx.navigation3:navigation3-runtime:1.0.1")
+  implementation("androidx.navigation3:navigation3-ui:1.0.1")
   implementation("androidx.webkit:webkit:1.11.0")
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.json:json:20231013")

@@ -130,11 +130,11 @@ fun Confirm(title: String, text: String, ok: String, danger: Boolean = false, on
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Sheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun Sheet(onDismiss: () -> Unit, scrim: Color = Color.Black.copy(alpha = 0.28f), content: @Composable ColumnScope.() -> Unit) {
     val pal = P
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = pal.surface, shape = Shapes.sheet, dragHandle = {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = pal.surface, shape = Shapes.sheet, dragHandle = {
         Box(Modifier.padding(top = 10.dp, bottom = 6.dp).size(36.dp, 4.dp).clip(Shapes.chip).background(pal.line))
-    }, scrimColor = Color.Black.copy(alpha = 0.28f)) { Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 20.dp), content = content) }
+    }, scrimColor = scrim) { Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 20.dp), content = content) }
 }
 
 @Composable

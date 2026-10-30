@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:360px;height:800px;overflow:hidden;background:#F5F7FA;font-family:"Noto Sans CJK SC","Noto Sans SC",sans-serif;color:#131A29;-webkit-font-smoothing:antialiased}
+.screen{position:relative;width:360px;height:800px;overflow:hidden;background:var(--bg,#F5F7FA)}
+svg.i{display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sb{position:absolute;top:0;left:0;right:0;height:30px;display:flex;justify-content:space-between;align-items:center;padding:4px 24px 0;font-size:12.5px;font-weight:600;z-index:80;color:#131A29}
+.sbr{display:flex;gap:5px;align-items:center}
+.gest{position:absolute;bottom:7px;left:50%;width:112px;height:4px;margin-left:-56px;border-radius:2px;background:#131A29;opacity:.8;z-index:90}
+.scrim{position:absolute;inset:0;background:rgba(14,20,34,.36);z-index:40}
+.abs{position:absolute}
+.row{display:flex;align-items:center}
+.ibtn{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;color:#131A29;flex:none}
+.glass{background:rgba(255,255,255,.62);backdrop-filter:blur(24px) saturate(1.7);-webkit-backdrop-filter:blur(24px) saturate(1.7);border:.6px solid rgba(255,255,255,.95);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 28px rgba(31,50,100,.15),0 1px 3px rgba(31,50,100,.08)}
+.hand{width:36px;height:4px;border-radius:2px;background:#C9D1DE;margin:10px auto 6px}
+.mono{font-family:"Noto Sans Mono CJK SC","DejaVu Sans Mono",monospace}
+.serif{font-family:"Noto Serif CJK SC","Noto Serif SC",serif}
+
+.kb{position:absolute;left:0;right:0;bottom:0;height:262px;background:#D3D8E1;padding:8px 3px 26px;display:flex;flex-direction:column;gap:9px;z-index:20}
+.kr{display:flex;gap:5px;justify-content:center}
+.kr i{font-style:normal;flex:1;height:42px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;color:#222;box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.kr i.w{flex:1.4;background:#B8BFCC}.kr i.w2{flex:1.5;background:#B8BFCC;font-size:14px}.kr i.sp{flex:5;font-size:14px;color:#556}.kr i.go{background:#2F6BFF;color:#fff}
+
+:root{--bg:#F5F7FA;--acc:#2F6BFF;--t2:#58637A;--t3:#8E98AA}
+.top{position:absolute;top:38px;left:14px;right:14px;height:54px;border-radius:27px;display:flex;align-items:center;padding:0 8px 0 6px;gap:6px;color:var(--t2);font-size:15px;z-index:20}
+.top .ph{flex:1}
+.av{width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,#2F6BFF,#7FA2FF);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.chips{position:absolute;top:104px;left:0;right:0;display:flex;gap:8px;padding:0 14px;overflow:hidden}
+.ch{height:34px;border-radius:17px;border:1px solid #D9DFEA;background:#fff;padding:0 14px;display:flex;align-items:center;gap:5px;font-size:13px;color:#2A3446;flex:none}
+.ch.on{background:#DCE6FF;border-color:transparent;color:#173A9A;font-weight:700}
+.grid{position:absolute;top:152px;left:12px;right:12px;display:flex;gap:10px}.grid .col{flex:1;display:flex;flex-direction:column;gap:10px}
+.card{background:#fff;border-radius:20px;padding:14px 14px 12px;border:1px solid rgba(214,222,236,.7);box-shadow:0 1px 2px rgba(31,50,100,.04);position:relative}
+.card.sel{border:2px solid var(--acc);background:#F2F6FF}
+.card .tg{display:flex;gap:6px;align-items:center;font-size:10.5px;color:var(--t3);margin-bottom:8px}
+.card .tt{font-size:15px;font-weight:700;line-height:21px;margin-bottom:6px}
+.card .sn{font-size:12.5px;line-height:19px;color:var(--t2);display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.card .ft{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:10.5px;color:var(--t3)}
+.badge{height:17px;border-radius:5px;background:#EAF0FF;color:#2F6BFF;font-weight:800;font-size:9px;padding:0 5px;display:inline-flex;align-items:center}
+.bar{position:absolute;left:0;right:0;bottom:0;height:78px;padding:6px 14px 0;display:flex;align-items:flex-start;justify-content:space-between;z-index:30;border-radius:24px 24px 0 0}
+.bar .ibt{width:46px;height:46px;display:flex;align-items:center;justify-content:center;color:#3A4660}
+.cfab{position:absolute;right:16px;bottom:34px;width:60px;height:60px;border-radius:20px;background:#fff;color:var(--acc);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(31,50,100,.2);z-index:40;border:1px solid rgba(47,107,255,.15)}
+.page{position:absolute;inset:0;background:#F5F7FA}
+.txt{position:absolute;top:104px;left:0;right:0;padding:0 24px}
+.txt h1{font-size:25px;line-height:35px;font-weight:700;margin-bottom:8px}
+.txt .mt{font-size:12px;color:var(--t3);margin-bottom:16px;display:flex;gap:6px;align-items:center}
+.txt p{font-size:16.5px;line-height:29px;color:#1B2332;margin-bottom:10px}
+.txt h2{font-size:19px;font-weight:700;line-height:28px;margin:16px 0 6px}
+.txt blockquote{border-left:3px solid var(--acc);padding-left:14px;font-size:16px;line-height:27px;color:#33405A;margin-bottom:12px}
+.txt ol{list-style:none;counter-reset:c;margin-bottom:10px}.txt li{counter-increment:c;font-size:16.5px;line-height:29px;display:flex;gap:10px}.txt li:before{content:counter(c)".";color:var(--acc);font-weight:700;width:18px}
+.rtop{position:absolute;top:34px;left:10px;right:10px;height:56px;border-radius:28px;display:flex;align-items:center;padding:0 6px;z-index:30}
+.rdock{position:absolute;left:50%;transform:translateX(-50%);bottom:24px;height:64px;border-radius:32px;display:flex;align-items:center;padding:0 8px;gap:2px;z-index:30;white-space:nowrap}
+.rdock .a{height:48px;min-width:48px;border-radius:24px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13.5px;font-weight:600;color:#2A3446;padding:0 12px}
+.rdock .a.on{background:rgba(47,107,255,.14);color:#1D4FD6}
+.rdock .a.p{background:var(--acc);color:#fff;padding:0 18px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;z-index:50;padding-bottom:34px;box-shadow:0 -6px 30px rgba(20,30,60,.16)}
+.srow{display:flex;align-items:center;gap:16px;height:54px;padding:0 24px;font-size:15.5px;color:#1E2636}.srow svg{color:var(--t2)}.srow.d,.srow.d svg{color:#D13A3A}
+.pop{position:absolute;left:14px;right:14px;bottom:100px;border-radius:26px;z-index:50;padding:16px 18px 18px}
+.pop:after{content:"";position:absolute;bottom:-7px;left:118px;width:16px;height:16px;background:inherit;transform:rotate(45deg);border-radius:3px}
+.sl{display:flex;align-items:center;gap:12px;height:40px}.sl .l{width:44px;font-size:13px;font-weight:600;color:#3A4660}.sl .t{flex:1;height:4px;border-radius:2px;background:rgba(40,60,110,.15);position:relative}.sl .t i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--acc)}.sl .t b{position:absolute;top:-8px;width:20px;height:20px;border-radius:10px;background:#fff;border:2px solid var(--acc);margin-left:-10px;box-shadow:0 2px 6px rgba(20,40,100,.25)}
+.sl .v{width:48px;text-align:right;font-size:12.5px;font-weight:700;color:#1D4FD6}
+.sw{display:flex;gap:10px;margin-bottom:10px}.sw i{flex:1;height:40px;border-radius:20px;border:1px solid #D5DBE6;font-style:normal;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}.sw i.on{outline:2.5px solid var(--acc);outline-offset:1.5px}
+.xrow{display:flex;gap:14px;padding:14px 20px;align-items:center;background:#fff;border-radius:22px;margin:0 14px 10px;border:1px solid rgba(214,222,236,.7)}
+.xth{width:56px;height:74px;border-radius:10px;flex:none;position:relative;overflow:hidden}
+.xrow .t{font-size:16px;font-weight:700}.xrow .s{font-size:12.5px;color:var(--t2);margin-top:3px;line-height:18px}
+.ed{position:absolute;top:150px;left:0;right:0;padding:0 22px;font-size:15.5px;line-height:25px;color:#1E2636}
+.ed .m{color:#2F6BFF}.ed b{font-weight:700}.l{min-height:25px;white-space:pre-wrap}
+.caret{display:inline-block;width:2px;height:20px;background:var(--acc);vertical-align:-4px;margin-left:1px}
+</style></head><body><div class="screen"><div class="sb"><span class="t">21:36</span><span class="sbr"><svg width="16" height="12" viewBox="0 0 16 12"><rect x="0" y="8" width="3" height="4" rx=".8" fill="currentColor"/><rect x="4.3" y="5.5" width="3" height="6.5" rx=".8" fill="currentColor"/><rect x="8.6" y="3" width="3" height="9" rx=".8" fill="currentColor"/><rect x="13" y="0" width="3" height="12" rx=".8" fill="currentColor"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 4.2a9 9 0 0113 0M3.8 6.8a5.8 5.8 0 018.4 0"/><circle cx="8" cy="10" r="1.2" fill="currentColor" stroke="none"/></svg><svg width="25" height="12" viewBox="0 0 25 12"><rect x=".6" y=".6" width="21" height="10.8" rx="3" fill="none" stroke="currentColor" stroke-width="1" opacity=".5"/><rect x="2" y="2" width="15" height="8" rx="1.8" fill="currentColor"/><rect x="22.6" y="4" width="1.6" height="4" rx=".8" fill="currentColor" opacity=".5"/></svg></span></div><div class="gest"></div><div class="page"></div><div class="txt"><h1>周末读书笔记：慢下来的力量</h1><div class="mt"><span class="badge">MD</span>微信公众号 · 10月30日 · 约 4 分钟</div>
+<blockquote>真正的效率，来自于对注意力的尊重。</blockquote><p>我们习惯把效率理解成「更快」，可真正让人沉下来的，往往是「更慢」。上周我把手机放进抽屉，只留一本纸质书和一杯水，二十五分钟后才发现，注意力像被洗过一遍，句子重新有了重量。</p><h2>三个小习惯</h2><ol><li><span>每天固定 <b>25 分钟</b> 阅读，不看手机</span></li><li><span>读完写 <i>三句话</i> 总结</span></li><li><span>周末回顾，挑一条付诸行动</span></li></ol><p>习惯不需要宏大，只要足够小，小到今天就能开始。把「读完」换成「读进去」，你会发现书架并没有变空，心里却变得宽敞。</p><p>最后，记得把喜欢的句子存进「拾页」，下次翻起来依然有温度。</p></div><div class="scrim"></div><div class="sheet"><div class="hand"></div>
+<div style="padding:2px 24px 10px"><div style="font-size:17px;font-weight:700">周末读书笔记：慢下来的力量</div><div style="font-size:12px;color:#8E98AA;margin-top:4px">Markdown · 12.4 KB · 编辑于 今天 21:08</div></div>
+<div style="height:1px;background:#EBEEF4;margin:4px 0"></div>
+<div class="srow "><svg class="i" width="22" height="22" viewBox="0 0 24 24" ><path fill="currentColor" d="M7 4h10a1 1 0 011 1v15l-6-4-6 4V5a1 1 0 011-1z"/></svg>取消收藏</div><div class="srow "><svg class="i" width="22" height="22" viewBox="0 0 24 24" ><path d="M3 12V5a2 2 0 012-2h7l9 9-9 9z"/><circle cx="8" cy="8" r="1.3"/></svg>加入合集…</div><div class="srow "><svg class="i" width="22" height="22" viewBox="0 0 24 24" ><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/></svg>置顶</div><div class="srow "><svg class="i" width="22" height="22" viewBox="0 0 24 24" ><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>复制全文</div><div class="srow "><svg class="i" width="22" height="22" viewBox="0 0 24 24" ><path d="M8 4h2a2 2 0 012 2v12a2 2 0 01-2 2H8M16 4h-2a2 2 0 00-2 2M16 20h-2a2 2 0 01-2-2"/></svg>重命名</div><div class="srow "><svg class="i" width="22" height="22" viewBox="0 0 24 24" ><path d="M4 12a8 8 0 108-8 8 8 0 00-6 2.7M4 4v4h4M12 8v4l3 2"/></svg>历史版本</div><div class="srow "><svg class="i" width="22" height="22" viewBox="0 0 24 24" ><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>在 Notion 打开</div><div class="srow d"><svg class="i" width="22" height="22" viewBox="0 0 24 24" ><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13M10 11v6M14 11v6"/></svg>删除</div></div></div></body></html>

@@ -37,7 +37,7 @@ import java.net.URL
 @Immutable
 class ReadStyle(val scale: Float, val serif: Boolean, val netImages: Boolean, val baseDir: File?, val onLink: (String) -> Unit, val lineMult: Float = 1.75f, val paraEm: Float = 0.6f) {
     /** 块与块之间的距离：段间距（em）× 正文字号 */
-    val gap get() = (16f * scale * paraEm).dp
+    val gap get() = (17f * scale * paraEm).dp
 }
 
 /** 图片加载：本地相对路径（限定在文档目录内）/ data: / https（可关闭）。解码时按目标宽度降采样。 */
@@ -106,8 +106,8 @@ fun RenderBlocks(blocks: List<MdBlock>, st: ReadStyle, depth: Int = 0) {
 fun Block(b: MdBlock, st: ReadStyle, depth: Int = 0) {
     val pal = P
     val fam = if (st.serif) FontFamily.Serif else FontFamily.Default
-    val body = (16f * st.scale).sp
-    val lh = (16f * st.scale * st.lineMult).sp
+    val body = (17f * st.scale).sp
+    val lh = (17f * st.scale * st.lineMult).sp
     when (b) {
         is MdBlock.Heading -> {
             val size = when (b.level) { 1 -> 27f; 2 -> 22f; 3 -> 19f; 4 -> 17f; else -> 16f } * st.scale

@@ -5,6 +5,10 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.center
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithText
@@ -25,7 +29,7 @@ import java.io.FileOutputStream
 @Config(sdk = [34], qualifiers = "w393dp-h852dp-xxhdpi")
 class UiShotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
-    private val out = File("/workspace/apk-project/ShiYe/screenshots/v1.1").apply { mkdirs() }
+    private val out = File("/workspace/apk-project/ShiYe/screenshots/v2.0").apply { mkdirs() }
 
     private fun shot(name: String, wait: Long = 0) {
         if (wait > 0) { repeat(10) { Thread.sleep(wait / 10); rule.mainClock.advanceTimeBy(200); rule.waitForIdle() } }
@@ -54,24 +58,39 @@ class UiShotTest {
         FileOutputStream(File(out, "$name.png")).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 
-    @Test fun screens() {
+    private fun setup(): Pair<AppVm, String> {
         val app = ApplicationProvider.getApplicationContext<Application>()
         Library.init(app)
-        val md = ShotTest().sample
-        val d1 = Importer.fromText(md, null, "分享 · 微信")
+        val d1 = Importer.fromText(ShotTest().sample, null, "分享 · 微信")
         Importer.fromText("# 产品周报\n\n本周完成了三件事：\n\n- 上线新版首页\n- 修复 12 个问题\n- 完成用户访谈\n", null, "文件")
         Importer.fromText("# 会议纪要\n\n> 结论先行\n\n| 事项 | 负责人 |\n|--|--|\n| 排期 | 小林 |\n", null, "粘贴")
         Importer.fromText("<html><head><title>网页剪藏：设计灵感</title></head><body><h1>设计灵感</h1><p>一些好看的页面。</p></body></html>", null, "分享 · Safari", htmlHint = true)
-        Library.mutate(d1.id) { it.copy(fav = true) }
+        Library.mutate(d1.id) { it.copy(fav = true, progress = 0.42f) }
         val vm = AppVm(app)
         rule.setContent { ShiyeRoot(vm) }
         vm.prefs.setOnboarded()
-        shot("home_after")
-        vm.openDoc(d1.id); shot("reader_sharebar")
-        rule.onNodeWithContentDescription("更多").performClick(); shot("reader_more_sheet", 1000)
-        rule.onNodeWithText("排版（字号 · 行距 · 段间距）").performClick(); shot("typography_panel", 1000)
-        vm.pop(); vm.push(Route.Edit(d1.id)); shot("editor", 1000)
-        vm.pop(); vm.push(Route.Xhs(d1.id)); shot("xhs_screen", 5000); rule.onNodeWithText("版式").performScrollTo(); shot("xhs_picker", 1500)
-        vm.pop(); vm.push(Route.Long(d1.id)); shot("long_screen", 5000)
+        return vm to d1.id
     }
+    private fun tapRoot() { rule.onRoot().performTouchInput { click(center) }; rule.mainClock.advanceTimeBy(600); rule.waitForIdle() }
+
+    @Test fun home() {
+        val (vm, _) = setup()
+        shot("01_home")
+        vm.tab = Tab.Library; shot("08_library")
+        vm.tab = Tab.Me; shot("09_me")
+    }
+    @Test fun readerImmersive() { val (vm, id) = setup(); vm.openDoc(id); shot("02_reader_immersive", 1000) }
+    @Test fun readerToolbar() { val (vm, id) = setup(); vm.openDoc(id); shot("x", 800); tapRoot(); shot("03_reader_toolbar", 600) }
+    @Test fun typography() {
+        val (vm, id) = setup(); vm.openDoc(id); shot("x", 800); tapRoot()
+        rule.onNodeWithText("排版").performClick(); shot("04_typography", 1000)
+    }
+    @Test fun moreMenu() {
+        val (vm, id) = setup(); vm.openDoc(id); shot("x", 800); tapRoot()
+        rule.onNodeWithContentDescription("更多").performClick(); shot("05_more_popover", 800)
+    }
+    @Test fun export() {
+        val (vm, id) = setup(); vm.openDoc(id, export = true); shot("06_export", 6000)
+    }
+    @Test fun editor() { val (vm, id) = setup(); vm.push(Route.Edit(id)); shot("07_editor", 1000) }
 }

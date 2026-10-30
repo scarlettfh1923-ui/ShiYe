@@ -23,6 +23,7 @@ class Prefs(ctx: Context) {
     var fontScale by mutableStateOf(sp.getFloat("fontScale", 1f)); private set
     var lineHeight by mutableStateOf(sp.getFloat("lineHeight", 1.75f).coerceIn(1.2f, 2.2f)); private set    // 行距倍数 1.2–2.2
     var paraSpacing by mutableStateOf(sp.getFloat("paraSpacing", 0.6f).coerceIn(0f, 1.5f)); private set    // 段间距，单位 em，0–1.5
+    var readTheme by mutableStateOf(sp.getInt("readTheme", 0).coerceIn(0, 3)); private set   // 0 白(跟随应用) 1 雾蓝 2 纸 3 夜
     var serif by mutableStateOf(sp.getBoolean("serif", false)); private set
     var grid by mutableStateOf(sp.getBoolean("grid", true)); private set
     var sort by mutableStateOf(sp.getInt("sort", 0)); private set                   // 0 最近打开 1 最近存入 2 名称 3 大小
@@ -46,7 +47,8 @@ class Prefs(ctx: Context) {
     fun saveFontScale(v: Float) { fontScale = v.coerceIn(0.8f, 1.6f); sp.edit().putFloat("fontScale", fontScale).apply() }
     fun saveLineHeight(v: Float) { lineHeight = (Math.round(v * 20f) / 20f).coerceIn(1.2f, 2.2f); sp.edit().putFloat("lineHeight", lineHeight).apply() }
     fun saveParaSpacing(v: Float) { paraSpacing = (Math.round(v * 20f) / 20f).coerceIn(0f, 1.5f); sp.edit().putFloat("paraSpacing", paraSpacing).apply() }
-    fun resetTypography() { saveFontScale(1f); saveLineHeight(1.75f); saveParaSpacing(0.6f) }
+    fun resetTypography() { saveFontScale(1f); saveLineHeight(1.75f); saveParaSpacing(0.6f); saveSerif(false); saveReadTheme(0) }
+    fun saveReadTheme(v: Int) { readTheme = v.coerceIn(0, 3); sp.edit().putInt("readTheme", readTheme).apply() }
     fun saveSerif(v: Boolean) { serif = v; sp.edit().putBoolean("serif", v).apply() }
     fun saveGrid(v: Boolean) { grid = v; sp.edit().putBoolean("grid", v).apply() }
     fun saveSort(v: Int) { sort = v; sp.edit().putInt("sort", v).apply() }
