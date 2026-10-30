@@ -1,0 +1,19 @@
+# signing / secrets
+signing/
+*.p12
+*.jks
+*.keystore
+signing.properties
+local.properties
+# build outputs
+build/
+**/build/
+.gradle/
+.kotlin/
+*.apk
+!release-placeholder
+# third-party reference material (Glimpse), not ours to redistribute
+ref/
+.idea/
+*.iml
+.DS_Store
