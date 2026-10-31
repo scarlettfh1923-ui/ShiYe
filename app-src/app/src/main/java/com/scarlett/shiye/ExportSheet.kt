@@ -39,7 +39,7 @@ private fun captionOf(doc: Doc): String {
 private fun Spin(size: Int = 28) = CircularProgressIndicator(color = P.accent, strokeWidth = 2.5.dp, modifier = Modifier.size(size.dp))
 
 @Composable
-private fun Label(t: String) = Text(t, color = P.text2, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp, bottom = 10.dp))
+private fun Label(t: String) = Text(t, color = P.text2, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
 
 /** 底部「⋯」小圆钮 / 下载钮：描边圆形 */
 @Composable
@@ -69,7 +69,7 @@ fun ExportSheet(vm: AppVm, doc: Doc, startTab: Int = 0, onDismiss: () -> Unit) {
     val icons = listOf(R.drawable.ic_cards, R.drawable.ic_long_image, R.drawable.ic_notion, R.drawable.ic_doc)
 
     Sheet(onDismiss) {
-        Row(Modifier.padding(start = 4.dp, top = 2.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(start = 4.dp, top = 2.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("导出与分享", color = P.text, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f))
             Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onDismiss).semantics { contentDescription = "关闭" }, contentAlignment = Alignment.Center) { Ic(R.drawable.ic_close, P.text, 22) }
         }
@@ -77,9 +77,9 @@ fun ExportSheet(vm: AppVm, doc: Doc, startTab: Int = 0, onDismiss: () -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             names.forEachIndexed { i, n ->
                 val on = tab == i
-                val shape = when (i) { 0 -> RoundedCornerShape(24.dp, 8.dp, 8.dp, 24.dp); 3 -> RoundedCornerShape(8.dp, 24.dp, 24.dp, 8.dp); else -> RoundedCornerShape(8.dp) }
-                val sel = if (on) RoundedCornerShape(24.dp) else shape
-                Row(Modifier.weight(1f).height(46.dp).clip(sel).background(if (on) P.accent else P.field).clickable(role = androidx.compose.ui.semantics.Role.Tab) { tab = i },
+                val shape = when (i) { 0 -> RoundedCornerShape(24.dp, 8.dp, 8.dp, 24.dp); 3 -> RoundedCornerShape(8.dp, 24.dp, 24.dp, 8.dp); else -> Squircle(8.dp) }
+                val sel = if (on) Squircle(24.dp) else shape
+                Row(Modifier.weight(1f).height(48.dp).clip(sel).background(if (on) P.accent else P.field).clickable(role = androidx.compose.ui.semantics.Role.Tab) { tab = i },
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     Ic(icons[i], if (on) P.onAccent else P.text, 18); Spacer(Modifier.width(5.dp))
                     Text(n, color = if (on) P.onAccent else P.text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1)
@@ -135,9 +135,9 @@ private fun ColumnScope.XhsPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0:
         when {
             err != null -> Text(err!!, color = P.danger, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(30.dp))
             thumbs.isEmpty() -> Spin()
-            else -> LazyRow(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            else -> LazyRow(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 itemsIndexed(thumbs) { i, b ->
-                    Box(Modifier.fillMaxHeight().aspectRatio(b.width.toFloat() / b.height).shadow(12.dp, RoundedCornerShape(14.dp), ambientColor = Color(0x1A1B2A4D), spotColor = Color(0x261B2A4D)).clip(RoundedCornerShape(14.dp))) {
+                    Box(Modifier.fillMaxHeight().aspectRatio(b.width.toFloat() / b.height).shadow(12.dp, Squircle(16.dp), ambientColor = Color(0x1A1B2A4D), spotColor = Color(0x261B2A4D)).clip(Squircle(16.dp))) {
                         Image(b.asImageBitmap(), "第${i + 1}张", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                     }
                 }
@@ -146,15 +146,15 @@ private fun ColumnScope.XhsPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0:
         if (working && thumbs.isNotEmpty()) Box(Modifier.matchParentSize().background(P.surface.copy(alpha = 0.55f)), contentAlignment = Alignment.Center) { Spin() }
     }
     Text(if (thumbs.isEmpty()) "正在生成…" else "共 ${thumbs.size} 页 · 点这里修改封面标题" + if (truncated) " · 已截取前 18 页" else "", color = P.text3, style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.align(Alignment.CenterHorizontally).clip(Shapes.chip).clickable { editTitle = true }.padding(horizontal = 12.dp, vertical = 6.dp))
+        modifier = Modifier.align(Alignment.CenterHorizontally).clip(Shapes.chip).clickable { editTitle = true }.padding(horizontal = 12.dp, vertical = 8.dp))
 
     Label("样式")
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 2.dp, vertical = 3.dp)) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 2.dp, vertical = 3.dp)) {
         itemsIndexed(styles) { i, s ->
             val on = styleIx == i
-            Column(Modifier.width(62.dp).clip(RoundedCornerShape(12.dp)).clickable { styleIx = i; prefs.saveXhsStyle(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.width(62.dp).clip(Squircle(12.dp)).clickable { styleIx = i; prefs.saveXhsStyle(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
                 val bmp = covers.getOrNull(i)
-                Box(Modifier.fillMaxWidth().aspectRatio(0.76f).clip(RoundedCornerShape(11.dp)).background(Color(s.paper)).border(if (on) 2.5.dp else 0.8.dp, if (on) P.accent else P.line, RoundedCornerShape(11.dp))) {
+                Box(Modifier.fillMaxWidth().aspectRatio(0.76f).clip(Squircle(11.dp)).background(Color(s.paper)).border(if (on) 2.5.dp else 0.8.dp, if (on) P.accent else P.line, Squircle(11.dp))) {
                     if (bmp != null) Image(bmp.asImageBitmap(), s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
                 Text(s.name, color = if (on) P.accent else P.text2, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1, softWrap = false, modifier = Modifier.padding(top = 7.dp))
@@ -165,15 +165,15 @@ private fun ColumnScope.XhsPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0:
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         listOf("3:4 · 1080×1440", "9:16 · 1080×1920").forEachIndexed { i, t ->
             val on = ratio == i
-            Row(Modifier.weight(1f).height(44.dp).clip(if (on) RoundedCornerShape(22.dp) else if (i == 0) RoundedCornerShape(22.dp, 8.dp, 8.dp, 22.dp) else RoundedCornerShape(8.dp, 22.dp, 22.dp, 8.dp))
+            Row(Modifier.weight(1f).height(44.dp).clip(if (on) Squircle(24.dp) else if (i == 0) RoundedCornerShape(24.dp, 8.dp, 8.dp, 24.dp) else RoundedCornerShape(8.dp, 24.dp, 24.dp, 8.dp))
                 .background(if (on) P.accent else P.field).clickable { ratio = i; prefs.saveXhsRatio(i) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                 if (on) { Ic(R.drawable.ic_check, P.onAccent, 17); Spacer(Modifier.width(5.dp)) }
                 Text(t, color = if (on) P.onAccent else P.text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1)
             }
         }
     }
-    Spacer(Modifier.height(18.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Spacer(Modifier.height(16.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         PillButton("发到小红书", R.drawable.ic_send, {
             val direct = Share.toXhs(ctx, files, caption)
             vm.toast(if (direct) "标题和文案已复制，发布页长按粘贴即可" else "没找到小红书，请在列表里选 App；文案已复制")
@@ -184,7 +184,7 @@ private fun ColumnScope.XhsPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0:
         }
         Box {
             RoundOutline(R.drawable.ic_more, "更多分享", true) { more = true }
-            DropdownMenu(more, { more = false }, containerColor = P.surface, shape = RoundedCornerShape(16.dp)) {
+            DropdownMenu(more, { more = false }, containerColor = P.surface, shape = Squircle(16.dp)) {
                 DropdownMenuItem(text = { Text("发给微信") }, leadingIcon = { Ic(R.drawable.ic_wechat, P.text2, 20) }, onClick = { more = false; if (ready) Share.toWechat(ctx, files) })
                 DropdownMenuItem(text = { Text("更多分享") }, leadingIcon = { Ic(R.drawable.ic_share, P.text2, 20) }, onClick = { more = false; if (ready) Share.toAny(ctx, files) })
                 DropdownMenuItem(text = { Text("复制文案") }, leadingIcon = { Ic(R.drawable.ic_copy, P.text2, 20) }, onClick = { more = false; Share.copyText(ctx, caption); vm.toast("文案已复制") })
@@ -217,8 +217,8 @@ private fun LongPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0: String?, t
     val files = listOfNotNull(out?.file)
     val ready = files.isNotEmpty() && !working
 
-    Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(112.dp).height(168.dp).shadow(12.dp, RoundedCornerShape(14.dp), ambientColor = Color(0x1A1B2A4D), spotColor = Color(0x261B2A4D)).clip(RoundedCornerShape(14.dp)).background(P.field), contentAlignment = Alignment.Center) {
+    Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(112.dp).height(168.dp).shadow(12.dp, Squircle(16.dp), ambientColor = Color(0x1A1B2A4D), spotColor = Color(0x261B2A4D)).clip(Squircle(16.dp)).background(P.field), contentAlignment = Alignment.Center) {
             val o = out
             when {
                 err != null -> Text("失败", color = P.danger, style = MaterialTheme.typography.bodySmall)
@@ -234,13 +234,13 @@ private fun LongPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0: String?, t
         }
     }
     Label("样式")
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 2.dp, vertical = 3.dp)) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 2.dp, vertical = 3.dp)) {
         itemsIndexed(ExStyles.all) { i, s ->
             val on = styleIx == i
-            Column(Modifier.width(62.dp).clip(RoundedCornerShape(12.dp)).clickable { styleIx = i; prefs.saveExportStyle(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(62.dp, 76.dp).clip(RoundedCornerShape(11.dp)).background(Brush.verticalGradient(listOf(Color(s.bgTop), Color(s.bgBottom)))).border(if (on) 2.5.dp else 0.8.dp, if (on) P.accent else P.line, RoundedCornerShape(11.dp)).padding(8.dp)) {
-                    Column(Modifier.fillMaxSize().then(if (s.panel) Modifier.clip(RoundedCornerShape(6.dp)).background(Color(s.panelColor)).padding(4.dp) else Modifier), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(Modifier.fillMaxWidth(0.7f).height(6.dp).clip(Shapes.chip).background(if (s.solidCover) Color.White else Color(s.accent)))
+            Column(Modifier.width(62.dp).clip(Squircle(12.dp)).clickable { styleIx = i; prefs.saveExportStyle(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(62.dp, 76.dp).clip(Squircle(11.dp)).background(Brush.verticalGradient(listOf(Color(s.bgTop), Color(s.bgBottom)))).border(if (on) 2.5.dp else 0.8.dp, if (on) P.accent else P.line, Squircle(11.dp)).padding(8.dp)) {
+                    Column(Modifier.fillMaxSize().then(if (s.panel) Modifier.clip(Squircle(8.dp)).background(Color(s.panelColor)).padding(4.dp) else Modifier), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Box(Modifier.fillMaxWidth(0.7f).height(8.dp).clip(Shapes.chip).background(if (s.solidCover) Color.White else Color(s.accent)))
                         repeat(4) { Box(Modifier.fillMaxWidth(if (it == 3) 0.5f else 1f).height(3.dp).clip(Shapes.chip).background(Color(if (s.solidCover) 0xFFFFFFFF.toInt() else s.text2).copy(alpha = 0.55f))) }
                     }
                 }
@@ -248,8 +248,8 @@ private fun LongPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0: String?, t
             }
         }
     }
-    Spacer(Modifier.height(18.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Spacer(Modifier.height(16.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         PillButton("分享长图", R.drawable.ic_send, { Share.copyText(ctx, caption); Share.toAny(ctx, files); vm.toast("文案已复制，发布时长按粘贴") }, Modifier.weight(1f), enabled = ready)
         RoundOutline(R.drawable.ic_download, "存到相册", ready) {
             val n = runCatching { Share.saveToGallery(ctx, files) }.getOrDefault(0)
@@ -257,7 +257,7 @@ private fun LongPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0: String?, t
         }
         Box {
             RoundOutline(R.drawable.ic_more, "更多", true) { more = true }
-            DropdownMenu(more, { more = false }, containerColor = P.surface, shape = RoundedCornerShape(16.dp)) {
+            DropdownMenu(more, { more = false }, containerColor = P.surface, shape = Squircle(16.dp)) {
                 DropdownMenuItem(text = { Text("发给微信") }, leadingIcon = { Ic(R.drawable.ic_wechat, P.text2, 20) }, onClick = { more = false; if (ready) Share.toWechat(ctx, files) })
                 DropdownMenuItem(text = { Text("复制文案") }, leadingIcon = { Ic(R.drawable.ic_copy, P.text2, 20) }, onClick = { more = false; Share.copyText(ctx, caption); vm.toast("文案已复制") })
             }
@@ -269,7 +269,7 @@ private fun LongPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0: String?, t
 private fun NotionPanel(vm: AppVm, doc: Doc, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val ready = vm.prefs.notionReady
-    Column(Modifier.padding(top = 20.dp).fillMaxWidth().clip(Shapes.card).background(P.field).padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.padding(top = 20.dp).fillMaxWidth().clip(Shapes.card).background(P.field).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(if (doc.notionUrl.isNotBlank()) "已同步过" else if (ready) "同步到你的 Notion" else "还没有配置 Notion", color = P.text, style = MaterialTheme.typography.titleMedium)
         Text(when {
             doc.notionUrl.isNotBlank() -> "上次同步：${fmtAgo(doc.notionAt)}。再次同步会新建一页，不会覆盖原来的内容。"
@@ -277,8 +277,8 @@ private fun NotionPanel(vm: AppVm, doc: Doc, onDismiss: () -> Unit) {
             else -> "需要一个内部集成 Token 和目标页面链接，两分钟配好。"
         }, color = P.text2, style = MaterialTheme.typography.bodyMedium)
     }
-    Spacer(Modifier.height(18.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Spacer(Modifier.height(16.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PillButton(if (ready) (if (doc.notionUrl.isNotBlank()) "再同步一次" else "同步到 Notion") else "去配置", R.drawable.ic_notion, { onDismiss(); if (ready) vm.syncNotion(doc) else vm.push(Route.NotionSettings) }, Modifier.weight(1f))
         if (doc.notionUrl.isNotBlank()) PillButton("在 Notion 打开", R.drawable.ic_link, { Share.openUrl(ctx, doc.notionUrl) }, Modifier.weight(1f), primary = false)
     }
@@ -288,13 +288,13 @@ private fun NotionPanel(vm: AppVm, doc: Doc, onDismiss: () -> Unit) {
 private fun FilePanel(vm: AppVm, doc: Doc) {
     val ctx = LocalContext.current
     val ext = if (doc.type == DocType.HTML) "HTML" else "MD"
-    Column(Modifier.padding(top = 20.dp).fillMaxWidth().clip(Shapes.card).background(P.field).padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.padding(top = 20.dp).fillMaxWidth().clip(Shapes.card).background(P.field).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("分享原文件", color = P.text, style = MaterialTheme.typography.titleMedium)
         Text("以 .${ext.lowercase()} 文件发出，原样不改，微信、邮件、网盘都能收。", color = P.text2, style = MaterialTheme.typography.bodyMedium)
         Text("${doc.title}.${ext.lowercase()} · ${fmtSize(doc.size)}", color = P.text3, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
     }
-    Spacer(Modifier.height(18.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Spacer(Modifier.height(16.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PillButton("分享 $ext 文件", R.drawable.ic_file_out, { if (!runCatching { Share.file(ctx, doc) }.getOrDefault(false)) vm.toast("文件不存在，无法分享") }, Modifier.weight(1f))
         PillButton("复制全文", R.drawable.ic_copy, { Share.copyText(ctx, Library.readText(doc)); vm.toast("已复制全文") }, Modifier.weight(1f), primary = false)
     }

@@ -29,7 +29,7 @@ fun PageScaffold(title: String, vm: AppVm, content: @Composable ColumnScope.() -
         Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().glassSource(backdrop).verticalScroll(rememberScrollState()).imePadding()
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 72.dp, bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 32.dp)
-                .padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(22.dp), content = content)
+                .padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(24.dp), content = content)
             TopBar(title, { vm.pop() }, Modifier.align(Alignment.TopCenter))
         }
     }
@@ -45,11 +45,11 @@ fun MeTab(vm: AppVm) {
     val ver = remember { runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "1.1.0" }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(WindowInsets.statusBars)
         .padding(top = 16.dp, bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 120.dp).padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-      Column(Modifier.widthIn(max = 640.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(22.dp)) {
-        Row(Modifier.padding(start = 6.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        verticalArrangement = Arrangement.spacedBy(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+      Column(Modifier.widthIn(max = 640.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        Row(Modifier.padding(start = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(52.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(P.accent, androidx.compose.ui.graphics.Color(0xFF7FA2FF)))), contentAlignment = Alignment.Center) { Ic(R.drawable.ic_user, P.onAccent, 26) }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(16.dp))
             Column {
                 Text("我的", color = P.text, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
                 Text("${docs.size} 篇文档 · 仅保存在本机", color = P.text3, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
@@ -57,7 +57,7 @@ fun MeTab(vm: AppVm) {
         }
         Group("外观") {
             Column(Modifier.padding(16.dp)) {
-                Text("主题", color = P.text, fontSize = 16.sp, modifier = Modifier.padding(bottom = 10.dp))
+                Text("主题", color = P.text, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                 Segmented(listOf("跟随系统", "浅色", "深色"), prefs.themeMode, { prefs.saveThemeMode(it) }, Modifier.fillMaxWidth())
             }
             Divider()
@@ -92,11 +92,11 @@ fun MeTab(vm: AppVm) {
 private fun Field(label: String, value: String, onChange: (String) -> Unit, hint: String, secret: Boolean = false, single: Boolean = true) {
     var show by remember { mutableStateOf(false) }
     Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(label, color = P.text2, fontSize = 12.5.sp, fontWeight = FontWeight.Medium)
-        Row(Modifier.padding(top = 8.dp).fillMaxWidth().clip(Shapes.box).background(P.field).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = P.text2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Row(Modifier.padding(top = 8.dp).fillMaxWidth().clip(Shapes.box).background(P.field).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
-                if (value.isEmpty()) Text(hint, color = P.text3, fontSize = 14.5.sp)
-                BasicTextField(value, onChange, singleLine = single, textStyle = TextStyle(color = P.text, fontSize = 14.5.sp), cursorBrush = SolidColor(P.accent),
+                if (value.isEmpty()) Text(hint, color = P.text3, fontSize = 15.sp)
+                BasicTextField(value, onChange, singleLine = single, textStyle = TextStyle(color = P.text, fontSize = 15.sp), cursorBrush = SolidColor(P.accent),
                     visualTransformation = if (secret && !show) PasswordVisualTransformation() else VisualTransformation.None,
                     keyboardOptions = KeyboardOptions(keyboardType = if (secret) KeyboardType.Password else KeyboardType.Uri), modifier = Modifier.fillMaxWidth())
             }
@@ -124,14 +124,14 @@ fun NotionScreen(vm: AppVm) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 steps.forEachIndexed { i, s ->
                     Row {
-                        Box(Modifier.size(24.dp).clip(androidx.compose.foundation.shape.CircleShape).background(P.accentSoft), contentAlignment = Alignment.Center) { Text("${i + 1}", color = P.accent, fontSize = 12.5.sp, fontWeight = FontWeight.Bold) }
+                        Box(Modifier.size(24.dp).clip(androidx.compose.foundation.shape.CircleShape).background(P.accentSoft), contentAlignment = Alignment.Center) { Text("${i + 1}", color = P.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                         Spacer(Modifier.width(12.dp)); Text(s, color = P.text2, fontSize = 14.sp, lineHeight = 20.sp)
                     }
                 }
             }
         }
         Group("连接信息") {
-            Column(Modifier.padding(16.dp)) { Text("存放方式", color = P.text2, fontSize = 12.5.sp, modifier = Modifier.padding(bottom = 8.dp)); Segmented(listOf("子页面", "数据库条目"), if (type == "database") 1 else 0, { type = if (it == 1) "database" else "page" }, Modifier.fillMaxWidth()) }
+            Column(Modifier.padding(16.dp)) { Text("存放方式", color = P.text2, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp)); Segmented(listOf("子页面", "数据库条目"), if (type == "database") 1 else 0, { type = if (it == 1) "database" else "page" }, Modifier.fillMaxWidth()) }
             Divider()
             Field("集成 Token", token, { token = it }, "ntn_… 或 secret_…", secret = true)
             Divider()
@@ -147,12 +147,12 @@ fun NotionScreen(vm: AppVm) {
                 scope.launch { result = runCatching { Notion.test(token.trim(), target, type) }.fold({ true to it }, { false to (if (it is NotionException) it.message ?: "连接失败" else "网络不通或超时") }); testing = false }
             }, Modifier.fillMaxWidth(), enabled = !testing)
             result?.let { (ok, m) ->
-                Row(Modifier.fillMaxWidth().clip(Shapes.box).background(if (ok) P.accentSoft else P.danger.copy(alpha = 0.1f)).padding(14.dp), verticalAlignment = Alignment.Top) {
-                    Ic(if (ok) R.drawable.ic_check else R.drawable.ic_info, if (ok) P.accent else P.danger, 20); Spacer(Modifier.width(10.dp))
+                Row(Modifier.fillMaxWidth().clip(Shapes.box).background(if (ok) P.accentSoft else P.danger.copy(alpha = 0.1f)).padding(16.dp), verticalAlignment = Alignment.Top) {
+                    Ic(if (ok) R.drawable.ic_check else R.drawable.ic_info, if (ok) P.accent else P.danger, 20); Spacer(Modifier.width(8.dp))
                     Text(m, color = if (ok) P.accent else P.danger, fontSize = 14.sp, lineHeight = 20.sp)
                 }
             }
-            Text("Token 用手机的安全存储加密保存，只发给 Notion 官方接口。同步时，文档里的本地图片（最多 8 张、单张不超过 5 MB）会一并上传；再次同步同一篇文档，会替换上一次的页面。", color = P.text3, fontSize = 12.5.sp, lineHeight = 18.sp, modifier = Modifier.padding(horizontal = 6.dp))
+            Text("Token 用手机的安全存储加密保存，只发给 Notion 官方接口。同步时，文档里的本地图片（最多 8 张、单张不超过 5 MB）会一并上传；再次同步同一篇文档，会替换上一次的页面。", color = P.text3, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(horizontal = 8.dp))
         }
     }
 }

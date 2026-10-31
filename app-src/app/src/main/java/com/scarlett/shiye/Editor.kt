@@ -127,13 +127,13 @@ fun EditorScreen(vm: AppVm, id: String) {
                 if (!isHtml) Row(Modifier.height(36.dp).clip(Shapes.chip).background(P.field).padding(3.dp)) {
                     listOf("编辑", "预览").forEachIndexed { i, n ->
                         val on = (i == 1) == preview
-                        Box(Modifier.fillMaxHeight().clip(Shapes.chip).background(if (on) P.surface else Color.Transparent).clickable { preview = i == 1 }.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxHeight().clip(Shapes.chip).background(if (on) P.surface else Color.Transparent).clickable { preview = i == 1 }.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
                             Text(n, color = if (on) P.text else P.text3, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium))
                         }
                     }
                 }
-                Spacer(Modifier.width(10.dp))
-                Box(Modifier.height(38.dp).clip(Shapes.chip).background(if (dirty) P.accent else P.field).clickable(enabled = dirty, role = Role.Button) { save() }.padding(horizontal = 18.dp), contentAlignment = Alignment.Center) {
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.height(38.dp).clip(Shapes.chip).background(if (dirty) P.accent else P.field).clickable(enabled = dirty, role = Role.Button) { save() }.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
                     Text("保存", color = if (dirty) P.onAccent else P.text3, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
                 }
                 Spacer(Modifier.width(4.dp))
@@ -148,18 +148,18 @@ fun EditorScreen(vm: AppVm, id: String) {
                 preview && !isHtml -> {
                     val blocks = remember(tf.text) { Markdown.parse(tf.text) }
                     val st = ReadStyle(prefs.fontScale, prefs.serif, prefs.mdNet, Library.mainFile(doc).parentFile, onLink = {}, lineMult = prefs.lineHeight, paraEm = prefs.paraSpacing)
-                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 18.dp)) { RenderBlocks(blocks, st) }
+                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp)) { RenderBlocks(blocks, st) }
                 }
                 else -> Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { runCatching { req.requestFocus() } }) {
                     BasicTextField(tf, { change(it) }, textStyle = TextStyle(color = P.text, fontSize = 15.sp, lineHeight = 25.sp, fontFamily = FontFamily.Monospace), cursorBrush = SolidColor(P.accent),
                         modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 600.dp).focusRequester(req).padding(horizontal = 20.dp, vertical = 16.dp))
                 }
             }
-            if (loaded && !tooBig) Row(Modifier.fillMaxWidth().background(P.surface).hairline(GlassEdge.Top).windowInsetsPadding(WindowInsets.navigationBars).height(54.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (loaded && !tooBig) Row(Modifier.fillMaxWidth().background(P.surface).hairline(GlassEdge.Top).windowInsetsPadding(WindowInsets.navigationBars).height(56.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 KeyIcon(R.drawable.ic_undo, "撤销", hist.canUndo) { hist.undo(tf)?.let { tf = it } }
                 KeyIcon(R.drawable.ic_redo, "重做", hist.canRedo) { hist.redo(tf)?.let { tf = it } }
                 if (!isHtml) {
-                    Box(Modifier.padding(horizontal = 4.dp).width(0.8.dp).height(22.dp).background(P.line))
+                    Box(Modifier.padding(horizontal = 4.dp).width(0.8.dp).height(24.dp).background(P.line))
                     Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                         KeyText("H", "标题", !preview) { linePrefix("## ") }
                         KeyText("B", "粗体", !preview, bold = true) { wrap("**") }
@@ -169,7 +169,7 @@ fun EditorScreen(vm: AppVm, id: String) {
                         KeyText("🔗", "链接", !preview) { wrap("[", "](https://)") }
                     }
                 } else Text("${tf.text.length} 字符", color = P.text3, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f).padding(start = 12.dp))
-                Row(Modifier.clip(RoundedCornerShape(12.dp)).clickable(enabled = backupAt > 0) { confirmRestore = true }.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.clip(Squircle(12.dp)).clickable(enabled = backupAt > 0) { confirmRestore = true }.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Ic(R.drawable.ic_history, if (backupAt > 0) P.accent else P.text3.copy(alpha = 0.45f), 20); Spacer(Modifier.width(4.dp))
                     Text("上一版", color = if (backupAt > 0) P.accent else P.text3.copy(alpha = 0.45f), style = MaterialTheme.typography.labelMedium)
                 }

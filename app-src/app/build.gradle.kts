@@ -14,7 +14,7 @@ android {
   compileSdk = 36
   defaultConfig {
     applicationId = "com.scarlett.shiye"
-    minSdk = 29; targetSdk = 35; versionCode = 3; versionName = "2.0.0"
+    minSdk = 29; targetSdk = 35; versionCode = 4; versionName = "2.1.0"
   }
   signingConfigs {
     if (signProps.isNotEmpty()) create("release") {

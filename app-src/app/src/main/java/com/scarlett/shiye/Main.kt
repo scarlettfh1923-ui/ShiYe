@@ -182,9 +182,9 @@ fun ShiyeRoot(vm: AppVm) {
 @Composable
 fun BusyOverlay(msg: String) {
     Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.18f)).androidxClickBlock(), contentAlignment = Alignment.Center) {
-        Row(Modifier.glass(androidx.compose.foundation.shape.RoundedCornerShape(20.dp), floating = true).padding(horizontal = 22.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.material3.CircularProgressIndicator(Modifier.size(22.dp), color = P.accent, strokeWidth = 2.5.dp)
-            Spacer(Modifier.width(14.dp))
+        Row(Modifier.glass(Squircle(20.dp), floating = true).padding(horizontal = 24.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.CircularProgressIndicator(Modifier.size(24.dp), color = P.accent, strokeWidth = 2.5.dp)
+            Spacer(Modifier.width(16.dp))
             androidx.compose.material3.Text(msg, color = P.text, fontSize = androidx.compose.ui.unit.TextUnit(15f, androidx.compose.ui.unit.TextUnitType.Sp))
         }
     }

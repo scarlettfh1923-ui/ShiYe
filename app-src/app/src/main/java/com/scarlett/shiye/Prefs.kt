@@ -24,7 +24,7 @@ class Prefs(ctx: Context) {
     var lineHeight by mutableStateOf(sp.getFloat("lineHeight", 1.75f).coerceIn(1.2f, 2.2f)); private set    // 行距倍数 1.2–2.2
     var paraSpacing by mutableStateOf(sp.getFloat("paraSpacing", 0.6f).coerceIn(0f, 1.5f)); private set    // 段间距，单位 em，0–1.5
     var readTheme by mutableStateOf(sp.getInt("readTheme", 0).coerceIn(0, 3)); private set   // 0 白(跟随应用) 1 雾蓝 2 纸 3 夜
-    var serif by mutableStateOf(sp.getBoolean("serif", false)); private set
+    var serif by mutableStateOf(sp.getBoolean("serif", true)); private set
     var grid by mutableStateOf(sp.getBoolean("grid", true)); private set
     var sort by mutableStateOf(sp.getInt("sort", 0)); private set                   // 0 最近打开 1 最近存入 2 名称 3 大小
     var htmlNet by mutableStateOf(sp.getBoolean("htmlNet", true)); private set      // HTML 允许加载 https 图片/样式

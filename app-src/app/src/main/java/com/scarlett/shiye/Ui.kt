@@ -24,6 +24,19 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
+/** 分层柔影：一层贴边细影 + 一层大范围淡影，比单层 elevation 更像纸。level 1 卡片 · 2 浮层 · 3 书封 */
+@Composable
+fun Modifier.soft(shape: androidx.compose.ui.graphics.Shape, level: Int = 1): Modifier {
+    if (P.dark) return this
+    val ink = 0xFF0F1522.toInt()
+    fun c(a: Int) = Color((a shl 24) or (ink and 0xFFFFFF))
+    return when (level) {
+        1 -> shadow(1.dp, shape, false, c(0x0A), c(0x12)).shadow(12.dp, shape, false, c(0x06), c(0x14))
+        2 -> shadow(1.dp, shape, false, c(0x0A), c(0x12)).shadow(8.dp, shape, false, c(0x08), c(0x14)).shadow(24.dp, shape, false, c(0x08), c(0x1A))
+        else -> shadow(1.dp, shape, false, c(0x0A), c(0x1A)).shadow(6.dp, shape, false, c(0x0A), c(0x1F)).shadow(16.dp, shape, false, c(0x06), c(0x1F))
+    }
+}
+
 @Composable
 fun Ic(res: Int, tint: Color = P.text, size: Int = 22, modifier: Modifier = Modifier) =
     Icon(painterResource(res), null, tint = tint, modifier = modifier.size(size.dp))
@@ -33,7 +46,7 @@ fun Ic(res: Int, tint: Color = P.text, size: Int = 22, modifier: Modifier = Modi
 fun CircleBtn(icon: Int, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier, tint: Color = P.text, filled: Boolean = false, size: Int = 44, glass: Boolean = false) {
     val pal = P
     val bg = when { filled -> pal.accent; glass -> if (pal.dark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.78f); else -> pal.surface }
-    Box(modifier.size(size.dp).then(if (!filled && !glass) Modifier.shadow(6.dp, CircleShape, ambientColor = Color(0x141B2A4D), spotColor = Color(0x1F1B2A4D)) else Modifier)
+    Box(modifier.size(size.dp).then(if (!filled && !glass) Modifier.soft(CircleShape, 1) else Modifier)
         .clip(CircleShape).background(bg)
         .then(if (glass && !pal.dark) Modifier.border(0.8.dp, Color.White.copy(alpha = 0.9f), CircleShape) else Modifier)
         .clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) {
@@ -46,18 +59,18 @@ fun PillButton(text: String, icon: Int? = null, onClick: () -> Unit, modifier: M
     val pal = P
     Row(modifier.height(50.dp).clip(Shapes.chip).background(if (!enabled) pal.field else if (primary) pal.accent else pal.surface)
         .then(if (!primary) Modifier.border(1.dp, pal.line, Shapes.chip) else Modifier)
-        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         if (icon != null) { Ic(icon, if (primary && enabled) pal.onAccent else if (enabled) pal.text else pal.text3, 20); Spacer(Modifier.width(8.dp)) }
-        Text(text, color = if (primary && enabled) pal.onAccent else if (enabled) pal.text else pal.text3, fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(text, color = if (primary && enabled) pal.onAccent else if (enabled) pal.text else pal.text3, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
 @Composable
 fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     val pal = P
-    Box(Modifier.height(34.dp).clip(Shapes.chip).background(if (selected) pal.accent else if (pal.dark) pal.field else Color.White.copy(alpha = 0.8f))
-        .then(if (!selected) Modifier.border(0.8.dp, pal.line, Shapes.chip) else Modifier).clickable(onClick = onClick).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
-        Text(text, color = if (selected) pal.onAccent else pal.text2, fontSize = 13.5.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+    Box(Modifier.height(32.dp).clip(Shapes.chip).background(if (selected) pal.accent else if (pal.dark) pal.field else Color(0x0D0F1522))
+        .clickable(onClick = onClick).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+        Text(text, color = if (selected) pal.onAccent else pal.text2, fontSize = 14.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -68,7 +81,7 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, mod
         options.forEachIndexed { i, t ->
             Box(Modifier.weight(1f).height(36.dp).clip(Shapes.chip).background(if (i == selected) pal.surface else Color.Transparent)
                 .then(if (i == selected) Modifier.shadow(0.dp) else Modifier).clickable { onSelect(i) }, contentAlignment = Alignment.Center) {
-                Text(t, color = if (i == selected) pal.accent else pal.text2, fontSize = 13.5.sp, fontWeight = if (i == selected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+                Text(t, color = if (i == selected) pal.accent else pal.text2, fontSize = 14.sp, fontWeight = if (i == selected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
             }
         }
     }
@@ -78,26 +91,26 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, mod
 fun Group(title: String? = null, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val pal = P
     Column(modifier.fillMaxWidth()) {
-        if (title != null) Text(title, color = pal.text3, fontSize = 12.5.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 6.dp, bottom = 8.dp))
-        Column(Modifier.fillMaxWidth().shadow(if (pal.dark) 0.dp else 6.dp, Shapes.card, ambientColor = Color(0x0F1B2A4D), spotColor = Color(0x141B2A4D)).clip(Shapes.card).background(pal.surface), content = content)
+        if (title != null) Text(title, color = pal.text3, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp))
+        Column(Modifier.fillMaxWidth().soft(Shapes.card, 1).clip(Shapes.card).background(pal.surface), content = content)
     }
 }
 
 @Composable
 fun Row2(title: String, sub: String? = null, icon: Int? = null, onClick: (() -> Unit)? = null, trailing: @Composable (() -> Unit)? = null) {
     val pal = P
-    Row(Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (icon != null) { Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(pal.accentSoft), contentAlignment = Alignment.Center) { Ic(icon, pal.accent, 19) }; Spacer(Modifier.width(14.dp)) }
+    Row(Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 16.dp, vertical = 12.dp).heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) { Box(Modifier.size(32.dp).clip(Squircle(8.dp)).background(pal.accentSoft), contentAlignment = Alignment.Center) { Ic(icon, pal.accent, 19) }; Spacer(Modifier.width(16.dp)) }
         Column(Modifier.weight(1f)) {
             Text(title, color = pal.text, fontSize = 16.sp)
-            if (sub != null) Text(sub, color = pal.text3, fontSize = 12.5.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 2.dp))
+            if (sub != null) Text(sub, color = pal.text3, fontSize = 13.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 2.dp))
         }
-        if (trailing != null) { Spacer(Modifier.width(10.dp)); trailing() } else if (onClick != null) Ic(R.drawable.ic_chevron_right, pal.text3, 18)
+        if (trailing != null) { Spacer(Modifier.width(8.dp)); trailing() } else if (onClick != null) Ic(R.drawable.ic_chevron_right, pal.text3, 18)
     }
 }
 
 @Composable
-fun Divider() { Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.7.dp).background(P.line)) }
+fun Divider() { Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(P.hair)) }
 
 @Composable
 fun SwitchRow(title: String, sub: String? = null, icon: Int? = null, checked: Boolean, onChange: (Boolean) -> Unit) {
@@ -112,7 +125,7 @@ fun Toaster(msg: String?, modifier: Modifier = Modifier) {
     AnimatedVisibility(msg != null, modifier, enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
         var last by remember { mutableStateOf(msg) }
         if (msg != null) last = msg
-        Box(Modifier.padding(horizontal = 24.dp).glass(RoundedCornerShape(18.dp), floating = true).padding(horizontal = 18.dp, vertical = 12.dp)) {
+        Box(Modifier.padding(horizontal = 24.dp).glass(Squircle(16.dp), floating = true).padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(last ?: "", color = P.text, fontSize = 14.sp, textAlign = TextAlign.Center)
         }
     }
@@ -121,9 +134,9 @@ fun Toaster(msg: String?, modifier: Modifier = Modifier) {
 @Composable
 fun Confirm(title: String, text: String, ok: String, danger: Boolean = false, onOk: () -> Unit, onDismiss: () -> Unit) {
     val pal = P
-    AlertDialog(onDismissRequest = onDismiss, containerColor = pal.surface, shape = RoundedCornerShape(24.dp),
+    AlertDialog(onDismissRequest = onDismiss, containerColor = pal.surface, shape = Squircle(24.dp),
         title = { Text(title, color = pal.text, fontWeight = FontWeight.SemiBold, fontSize = 18.sp) },
-        text = { Text(text, color = pal.text2, fontSize = 14.5.sp, lineHeight = 21.sp) },
+        text = { Text(text, color = pal.text2, fontSize = 15.sp, lineHeight = 21.sp) },
         confirmButton = { TextButton(onClick = { onOk(); onDismiss() }) { Text(ok, color = if (danger) pal.danger else pal.accent, fontWeight = FontWeight.SemiBold) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消", color = pal.text2) } })
 }
@@ -133,14 +146,14 @@ fun Confirm(title: String, text: String, ok: String, danger: Boolean = false, on
 fun Sheet(onDismiss: () -> Unit, scrim: Color = Color.Black.copy(alpha = 0.28f), content: @Composable ColumnScope.() -> Unit) {
     val pal = P
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = pal.surface, shape = Shapes.sheet, dragHandle = {
-        Box(Modifier.padding(top = 10.dp, bottom = 6.dp).size(36.dp, 4.dp).clip(Shapes.chip).background(pal.line))
+        Box(Modifier.padding(top = 8.dp, bottom = 8.dp).size(36.dp, 4.dp).clip(Shapes.chip).background(pal.line))
     }, scrimColor = scrim) { Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 20.dp), content = content) }
 }
 
 @Composable
 fun SheetAction(icon: Int, text: String, danger: Boolean = false, onClick: () -> Unit) {
     val pal = P
-    Row(Modifier.fillMaxWidth().clip(Shapes.box).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(Shapes.box).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Ic(icon, if (danger) pal.danger else pal.text2, 22); Spacer(Modifier.width(16.dp))
         Text(text, color = if (danger) pal.danger else pal.text, fontSize = 16.sp)
     }
