@@ -1,10 +1,14 @@
 package com.scarlett.shiye
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -22,9 +26,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -39,13 +46,114 @@ private fun captionOf(doc: Doc): String {
 private fun Spin(size: Int = 28) = CircularProgressIndicator(color = P.accent, strokeWidth = 2.5.dp, modifier = Modifier.size(size.dp))
 
 @Composable
-private fun Label(t: String) = Text(t, color = P.text2, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+private fun Label(t: String) = Text(t, color = P.text2, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
 
 /** 底部「⋯」小圆钮 / 下载钮：描边圆形 */
 @Composable
 private fun RoundOutline(icon: Int, desc: String, enabled: Boolean = true, onClick: () -> Unit) {
     Box(Modifier.size(50.dp).clip(CircleShape).border(1.dp, P.line, CircleShape).clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) {
         Ic(icon, if (enabled) P.text else P.text3, 22)
+    }
+}
+
+/** 细长胶囊分段：单行文字，选中电光蓝底白字 */
+@Composable
+private fun ExportSegmented(names: List<String>, sel: Int, onSel: (Int) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(20.dp)).background(P.field).padding(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        names.forEachIndexed { i, n ->
+            val on = sel == i
+            Box(
+                Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(17.dp))
+                    .background(if (on) P.accent else Color.Transparent)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Tab) { onSel(i) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    n,
+                    color = if (on) P.onAccent else P.text2,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium),
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+/** 比例 pill：选中浅蓝底+蓝描边，未选中浅灰描边，不抢戏 */
+@Composable
+private fun RatioPill(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(
+        modifier.height(40.dp).clip(RoundedCornerShape(20.dp))
+            .background(if (selected) P.accentSoft else Color.Transparent)
+            .border(1.dp, if (selected) P.accent else P.line, RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (selected) { Ic(R.drawable.ic_check, P.accent, 16); Spacer(Modifier.width(4.dp)) }
+        Text(text, color = if (selected) P.accent else P.text2, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium), maxLines = 1)
+    }
+}
+
+/**
+ * 全屏看大图：左右翻页、页码、关闭 / 返回 / 点空白退出。
+ * 从文件按需解码，进入时落在点击的那一页。
+ */
+@Composable
+private fun FullscreenPreview(files: List<File>, start: Int, onDismiss: () -> Unit) {
+    if (files.isEmpty()) return
+    val startIx = start.coerceIn(0, files.lastIndex)
+    val pager = rememberPagerState(initialPage = startIx) { files.size }
+    BackHandler(onBack = onDismiss)
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Box(Modifier.fillMaxSize().background(Color(0xE6111216)).windowInsetsPadding(WindowInsets.safeDrawing)) {
+            HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
+                val bmp by produceState<Bitmap?>(null, files[i].path) {
+                    value = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                            BitmapFactory.decodeFile(files[i].path, opts)
+                            var sample = 1
+                            val maxSide = 2160
+                            while (opts.outWidth / sample > maxSide || opts.outHeight / sample > maxSide) sample *= 2
+                            BitmapFactory.decodeFile(files[i].path, BitmapFactory.Options().apply { inSampleSize = sample })
+                        }.getOrNull()
+                    }
+                }
+                Box(Modifier.fillMaxSize().clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onDismiss() }, contentAlignment = Alignment.Center) {
+                    when (val b = bmp) {
+                        null -> Spin(32)
+                        else -> Image(
+                            b.asImageBitmap(),
+                            "第${i + 1}页",
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp).clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { /* 吃掉点击，避免误关 */ },
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            }
+            Row(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "${pager.currentPage + 1} / ${files.size}",
+                    color = Color.White.copy(alpha = 0.92f),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
+                )
+            }
+            Box(
+                Modifier.align(Alignment.TopEnd).padding(8.dp).size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.14f))
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onDismiss)
+                    .semantics { contentDescription = "关闭" },
+                contentAlignment = Alignment.Center
+            ) { Ic(R.drawable.ic_close, Color.White, 22) }
+        }
     }
 }
 
@@ -66,26 +174,13 @@ fun ExportSheet(vm: AppVm, doc: Doc, startTab: Int = 0, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     DisposableEffect(Unit) { onDispose { runCatching { File(ctx.cacheDir, "export/$tag").deleteRecursively() } } }
     val names = listOf("小红书", "长图", "Notion", "文件")
-    val icons = listOf(R.drawable.ic_cards, R.drawable.ic_long_image, R.drawable.ic_notion, R.drawable.ic_doc)
 
     Sheet(onDismiss) {
-        Row(Modifier.padding(start = 4.dp, top = 2.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(start = 4.dp, top = 0.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("导出与分享", color = P.text, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f))
             Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onDismiss).semantics { contentDescription = "关闭" }, contentAlignment = Alignment.Center) { Ic(R.drawable.ic_close, P.text, 22) }
         }
-        // 四个分段：连在一起的分段按钮，选中项主色实心
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            names.forEachIndexed { i, n ->
-                val on = tab == i
-                val shape = when (i) { 0 -> RoundedCornerShape(24.dp, 8.dp, 8.dp, 24.dp); 3 -> RoundedCornerShape(8.dp, 24.dp, 24.dp, 8.dp); else -> Squircle(8.dp) }
-                val sel = if (on) Squircle(24.dp) else shape
-                Row(Modifier.weight(1f).height(48.dp).clip(sel).background(if (on) P.accent else P.field).clickable(role = androidx.compose.ui.semantics.Role.Tab) { tab = i },
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                    Ic(icons[i], if (on) P.onAccent else P.text, 18); Spacer(Modifier.width(5.dp))
-                    Text(n, color = if (on) P.onAccent else P.text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1)
-                }
-            }
-        }
+        ExportSegmented(names, tab) { tab = it }
         when (tab) {
             0 -> XhsPanel(vm, doc, prepared, err, tag)
             1 -> LongPanel(vm, doc, prepared, err, tag)
@@ -114,6 +209,7 @@ private fun ColumnScope.XhsPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0:
     var err by remember { mutableStateOf(err0) }
     var editTitle by remember { mutableStateOf(false) }
     var more by remember { mutableStateOf(false) }
+    var previewIx by remember { mutableStateOf<Int?>(null) }
     val typo = Typo(prefs.lineHeight, prefs.paraSpacing)
     LaunchedEffect(prepared, ratio, titleDebounced) {
         val p = prepared ?: return@LaunchedEffect
@@ -131,45 +227,49 @@ private fun ColumnScope.XhsPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0:
     val caption = remember(doc) { captionOf(doc) }
     val ready = files.isNotEmpty() && !working
 
-    Box(Modifier.fillMaxWidth().height(232.dp).padding(top = 16.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxWidth().height(280.dp).padding(top = 14.dp), contentAlignment = Alignment.Center) {
         when {
             err != null -> Text(err!!, color = P.danger, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(30.dp))
             thumbs.isEmpty() -> Spin()
-            else -> LazyRow(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            else -> LazyRow(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 itemsIndexed(thumbs) { i, b ->
-                    Box(Modifier.fillMaxHeight().aspectRatio(b.width.toFloat() / b.height).shadow(12.dp, Squircle(16.dp), ambientColor = Color(0x1A1B2A4D), spotColor = Color(0x261B2A4D)).clip(Squircle(16.dp))) {
-                        Image(b.asImageBitmap(), "第${i + 1}张", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                    Box(
+                        Modifier.fillMaxHeight().aspectRatio(b.width.toFloat() / b.height)
+                            .shadow(12.dp, Squircle(16.dp), ambientColor = Color(0x1A1B2A4D), spotColor = Color(0x261B2A4D))
+                            .clip(Squircle(16.dp))
+                            .clickable(enabled = ready && files.isNotEmpty()) { previewIx = i.coerceIn(0, files.lastIndex) }
+                    ) {
+                        Image(b.asImageBitmap(), "第${i + 1}张，点按放大", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                     }
                 }
             }
         }
         if (working && thumbs.isNotEmpty()) Box(Modifier.matchParentSize().background(P.surface.copy(alpha = 0.55f)), contentAlignment = Alignment.Center) { Spin() }
     }
-    Text(if (thumbs.isEmpty()) "正在生成…" else "共 ${thumbs.size} 页 · 点这里修改封面标题" + if (truncated) " · 已截取前 18 页" else "", color = P.text3, style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.align(Alignment.CenterHorizontally).clip(Shapes.chip).clickable { editTitle = true }.padding(horizontal = 12.dp, vertical = 8.dp))
+    Text(
+        if (thumbs.isEmpty()) "正在生成…" else "共 ${thumbs.size} 页 · 点卡片看大图 · 点这里改封面标题" + if (truncated) " · 已截取前 18 页" else "",
+        color = P.text3,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.align(Alignment.CenterHorizontally).clip(Shapes.chip).clickable { editTitle = true }.padding(horizontal = 12.dp, vertical = 8.dp)
+    )
 
     Label("样式")
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 2.dp, vertical = 3.dp)) {
         itemsIndexed(styles) { i, s ->
             val on = styleIx == i
-            Column(Modifier.width(62.dp).clip(Squircle(12.dp)).clickable { styleIx = i; prefs.saveXhsStyle(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.width(58.dp).clip(Squircle(12.dp)).clickable { styleIx = i; prefs.saveXhsStyle(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
                 val bmp = covers.getOrNull(i)
-                Box(Modifier.fillMaxWidth().aspectRatio(0.76f).clip(Squircle(11.dp)).background(Color(s.paper)).border(if (on) 2.5.dp else 0.8.dp, if (on) P.accent else P.line, Squircle(11.dp))) {
+                Box(Modifier.fillMaxWidth().aspectRatio(0.76f).clip(Squircle(11.dp)).background(Color(s.paper)).border(if (on) 2.dp else 0.8.dp, if (on) P.accent else P.line, Squircle(11.dp))) {
                     if (bmp != null) Image(bmp.asImageBitmap(), s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
-                Text(s.name, color = if (on) P.accent else P.text2, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1, softWrap = false, modifier = Modifier.padding(top = 7.dp))
+                Text(s.name, color = if (on) P.accent else P.text2, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1, softWrap = false, modifier = Modifier.padding(top = 6.dp))
             }
         }
     }
     Label("比例")
-    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("3:4 · 1080×1440", "9:16 · 1080×1920").forEachIndexed { i, t ->
-            val on = ratio == i
-            Row(Modifier.weight(1f).height(44.dp).clip(if (on) Squircle(24.dp) else if (i == 0) RoundedCornerShape(24.dp, 8.dp, 8.dp, 24.dp) else RoundedCornerShape(8.dp, 24.dp, 24.dp, 8.dp))
-                .background(if (on) P.accent else P.field).clickable { ratio = i; prefs.saveXhsRatio(i) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                if (on) { Ic(R.drawable.ic_check, P.onAccent, 17); Spacer(Modifier.width(5.dp)) }
-                Text(t, color = if (on) P.onAccent else P.text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1)
-            }
+            RatioPill(t, ratio == i, Modifier.weight(1f)) { ratio = i; prefs.saveXhsRatio(i) }
         }
     }
     Spacer(Modifier.height(16.dp))
@@ -192,6 +292,7 @@ private fun ColumnScope.XhsPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0:
         }
     }
     if (editTitle) TextPrompt("封面标题", title, "好", { title = it.take(60).ifBlank { doc.title } }, { editTitle = false })
+    previewIx?.let { ix -> FullscreenPreview(files, ix) { previewIx = null } }
 }
 
 /** 长图：就是一张连续的长图，不分页。 */
@@ -204,6 +305,7 @@ private fun LongPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0: String?, t
     var working by remember { mutableStateOf(true) }
     var err by remember { mutableStateOf(err0) }
     var more by remember { mutableStateOf(false) }
+    var showPreview by remember { mutableStateOf(false) }
     val typo = Typo(prefs.lineHeight, prefs.paraSpacing)
     LaunchedEffect(prepared, styleIx, prefs.lineHeight, prefs.paraSpacing) {
         val p = prepared ?: return@LaunchedEffect
@@ -217,34 +319,40 @@ private fun LongPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0: String?, t
     val files = listOfNotNull(out?.file)
     val ready = files.isNotEmpty() && !working
 
-    Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(112.dp).height(168.dp).shadow(12.dp, Squircle(16.dp), ambientColor = Color(0x1A1B2A4D), spotColor = Color(0x261B2A4D)).clip(Squircle(16.dp)).background(P.field), contentAlignment = Alignment.Center) {
+    Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.width(128.dp).height(192.dp)
+                .shadow(12.dp, Squircle(16.dp), ambientColor = Color(0x1A1B2A4D), spotColor = Color(0x261B2A4D))
+                .clip(Squircle(16.dp)).background(P.field)
+                .clickable(enabled = ready) { showPreview = true },
+            contentAlignment = Alignment.Center
+        ) {
             val o = out
             when {
                 err != null -> Text("失败", color = P.danger, style = MaterialTheme.typography.bodySmall)
                 o == null -> Spin(24)
-                else -> Image(o.thumb.asImageBitmap(), "长图预览", Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
+                else -> Image(o.thumb.asImageBitmap(), "长图预览，点按放大", Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
             }
             if (working && out != null) Box(Modifier.matchParentSize().background(P.surface.copy(alpha = 0.55f)), contentAlignment = Alignment.Center) { Spin(24) }
         }
         Column(Modifier.weight(1f)) {
             Text("一张连续的长图", color = P.text, style = MaterialTheme.typography.titleMedium)
             Text(out?.let { "${it.width} × ${it.height} 像素" } ?: err ?: "正在生成…", color = P.text3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
-            Text(if (out?.truncated == true) "内容很长，已截取前面的部分。" else "不分页，适合发朋友圈、微信、长文备份；小红书图文请用左侧的「小红书」。", color = P.text2, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+            Text(if (out?.truncated == true) "内容很长，已截取前面的部分。" else "点左侧预览可看大图。不分页，适合发朋友圈、微信；小红书图文请用「小红书」。", color = P.text2, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
         }
     }
     Label("样式")
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 2.dp, vertical = 3.dp)) {
         itemsIndexed(ExStyles.all) { i, s ->
             val on = styleIx == i
-            Column(Modifier.width(62.dp).clip(Squircle(12.dp)).clickable { styleIx = i; prefs.saveExportStyle(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(62.dp, 76.dp).clip(Squircle(11.dp)).background(Brush.verticalGradient(listOf(Color(s.bgTop), Color(s.bgBottom)))).border(if (on) 2.5.dp else 0.8.dp, if (on) P.accent else P.line, Squircle(11.dp)).padding(8.dp)) {
+            Column(Modifier.width(58.dp).clip(Squircle(12.dp)).clickable { styleIx = i; prefs.saveExportStyle(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(58.dp, 72.dp).clip(Squircle(11.dp)).background(Brush.verticalGradient(listOf(Color(s.bgTop), Color(s.bgBottom)))).border(if (on) 2.dp else 0.8.dp, if (on) P.accent else P.line, Squircle(11.dp)).padding(8.dp)) {
                     Column(Modifier.fillMaxSize().then(if (s.panel) Modifier.clip(Squircle(8.dp)).background(Color(s.panelColor)).padding(4.dp) else Modifier), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Box(Modifier.fillMaxWidth(0.7f).height(8.dp).clip(Shapes.chip).background(if (s.solidCover) Color.White else Color(s.accent)))
                         repeat(4) { Box(Modifier.fillMaxWidth(if (it == 3) 0.5f else 1f).height(3.dp).clip(Shapes.chip).background(Color(if (s.solidCover) 0xFFFFFFFF.toInt() else s.text2).copy(alpha = 0.55f))) }
                     }
                 }
-                Text(s.name, color = if (on) P.accent else P.text2, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1, softWrap = false, modifier = Modifier.padding(top = 7.dp))
+                Text(s.name, color = if (on) P.accent else P.text2, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium), maxLines = 1, softWrap = false, modifier = Modifier.padding(top = 6.dp))
             }
         }
     }
@@ -263,6 +371,7 @@ private fun LongPanel(vm: AppVm, doc: Doc, prepared: Prepared?, err0: String?, t
             }
         }
     }
+    if (showPreview && files.isNotEmpty()) FullscreenPreview(files, 0) { showPreview = false }
 }
 
 @Composable

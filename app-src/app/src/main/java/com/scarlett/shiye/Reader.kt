@@ -49,7 +49,7 @@ import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/** 阅读页：沉浸式正文 + 点按唤出的玻璃栏。二级操作（目录 / 排版 / 编辑 / 导出）都从这里的工具条进入。 */
+/** 阅读页：沉浸式正文 + 点按唤出的玻璃栏。二级操作（排版 / 编辑 / 导出）都从这里的工具条进入。 */
 @Composable
 fun ReaderScreen(vm: AppVm, id: String, export: Boolean = false) {
     val docs by Library.docs.collectAsState()
@@ -175,7 +175,7 @@ fun MdReader(vm: AppVm, doc: Doc, onExport: () -> Unit) {
     val backdrop = remember { Backdrop() }
     val ui = remember { ReaderUi() }
     var chrome by rememberSaveable { mutableStateOf(false) }
-    var showToc by remember { mutableStateOf(false) }; var showAa by remember { mutableStateOf(false) }
+    var showAa by remember { mutableStateOf(false) }
     var scrub by remember { mutableStateOf<Float?>(null) }
     val style = ReadStyle(prefs.fontScale, prefs.serif, prefs.mdNet, Library.mainFile(doc).parentFile, onLink = { u ->
         if (u.startsWith("https://") || u.startsWith("http://")) ui.link = u else vm.toast("已拦截不支持的链接")
@@ -260,7 +260,6 @@ fun MdReader(vm: AppVm, doc: Doc, onExport: () -> Unit) {
                         thumb = { Box(Modifier.size(24.dp).shadow(3.dp, CircleShape).clip(CircleShape).background(Color.White).border(5.dp, P.accent, CircleShape)) },
                         track = { s -> SliderDefaults.Track(s, Modifier.height(4.dp), colors = colors, thumbTrackGapSize = 0.dp, trackInsideCornerSize = 0.dp, drawStopIndicator = null) })
                     Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                        ToolItem(R.drawable.ic_toc, "目录", Modifier.weight(1f)) { showToc = true }
                         ToolItem(R.drawable.ic_text_size, "排版", Modifier.weight(1f)) { showAa = true }
                         ToolItem(R.drawable.ic_edit, "编辑", Modifier.weight(1f)) { vm.push(Route.Edit(doc.id)) }
                         ToolItem(R.drawable.ic_share, "分享", Modifier.weight(1f), primary = true) { onExport() }
@@ -270,25 +269,8 @@ fun MdReader(vm: AppVm, doc: Doc, onExport: () -> Unit) {
             ReaderMenu(vm, doc, ui)
         }
     }
-    if (showToc) TocSheet(heads, curHead, onPick = { showToc = false; scope.launch { state.animateScrollToItem(it) } }, onDismiss = { showToc = false })
     if (showAa) TypographySheet(prefs) { showAa = false }
     ReaderDialogs(vm, doc, ui)
-}
-
-@Composable
-private fun TocSheet(heads: List<Head>, cur: Head?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
-    Sheet(onDismiss) {
-        Text("目录", color = P.text, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
-        if (heads.isEmpty()) Text("这篇文档没有标题层级。", color = P.text3, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(8.dp, 12.dp))
-        heads.forEach { h ->
-            val on = h === cur
-            Row(Modifier.fillMaxWidth().clip(Shapes.box).background(if (on) P.accentSoft else Color.Transparent).clickable { onPick(h.item) }.padding(start = (12 + (h.level - 1) * 18).dp, top = 12.dp, bottom = 12.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(h.title, color = if (on) P.accent else if (h.level == 1) P.text else P.text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-                    style = if (h.level == 1) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal))
-                if (on) Ic(R.drawable.ic_check, P.accent, 18)
-            }
-        }
-    }
 }
 
 private fun trim(v: Float) = "%.2f".format(v).trimEnd('0').trimEnd('.')
