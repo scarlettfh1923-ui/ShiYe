@@ -92,7 +92,7 @@ fun Group(title: String? = null, modifier: Modifier = Modifier, content: @Compos
     val pal = P
     Column(modifier.fillMaxWidth()) {
         if (title != null) Text(title, color = pal.text3, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp))
-        Column(Modifier.fillMaxWidth().glass(Shapes.card, floating = true), content = content)
+        Column(Modifier.fillMaxWidth().soft(Shapes.card, 1).clip(Shapes.card).background(pal.surface), content = content)
     }
 }
 
