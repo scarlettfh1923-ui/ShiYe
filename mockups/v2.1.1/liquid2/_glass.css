@@ -1,0 +1,53 @@
+/* Real liquid-glass vocabulary: glass = controls only; content stays opaque.
+   Thin fill + heavy blur + rim specular + slight chromatic edge. */
+:root{
+  --bg:#DCE6F5; --acc:#2F6BFF; --t1:#0F1522; --t2:#4A5568; --t3:#8490A3;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:390px;height:844px;overflow:hidden;color:var(--t1);
+ -webkit-font-smoothing:antialiased;font-family:"Noto Sans CJK SC","PingFang SC",system-ui,sans-serif}
+.screen{position:relative;width:390px;height:844px;overflow:hidden;
+  background:
+    radial-gradient(120% 80% at 0% 0%, #B8D0FF 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 20%, #9BB8FF 0%, transparent 50%),
+    radial-gradient(80% 60% at 50% 100%, #C9D9F5 0%, transparent 55%),
+    linear-gradient(180deg,#EAF0FA,#D5E0F2)}
+/* colorful wallpaper blobs so refraction/blur is obvious */
+.blob{position:absolute;border-radius:50%;filter:blur(2px);pointer-events:none;z-index:0}
+.sb{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:flex-end;
+ padding:0 28px 10px 32px;font-size:15px;font-weight:600;z-index:40}
+.sbr{display:flex;gap:7px;align-items:center}
+.gest{position:absolute;bottom:10px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#0F1522;opacity:.85;z-index:50}
+
+/* === LIQUID GLASS === */
+.glass{
+  position:relative;
+  background:rgba(255,255,255,.18);
+  backdrop-filter:blur(40px) saturate(1.9) brightness(1.08);
+  -webkit-backdrop-filter:blur(40px) saturate(1.9) brightness(1.08);
+  box-shadow:
+    0 8px 32px rgba(20,40,90,.14),
+    0 1px 0 rgba(255,255,255,.55) inset,
+    0 -1px 0 rgba(255,255,255,.12) inset;
+  isolation:isolate;
+}
+.glass::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;
+  padding:1px;
+  background:
+    linear-gradient(160deg,
+      rgba(255,255,255,.95) 0%,
+      rgba(200,230,255,.35) 18%,
+      rgba(255,255,255,.08) 40%,
+      rgba(180,160,255,.22) 72%,
+      rgba(255,255,255,.55) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+}
+/* top specular streak */
+.glass::after{
+  content:"";position:absolute;left:10%;right:10%;top:1px;height:38%;border-radius:inherit;pointer-events:none;z-index:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));
+  opacity:.85;
+}
+.glass > *{position:relative;z-index:3}

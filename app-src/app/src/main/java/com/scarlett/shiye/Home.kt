@@ -174,7 +174,7 @@ private fun HomeRail(vm: AppVm, onImport: () -> Unit) {
 /** 搜索栏右侧的圆形「+」：导入入口（取代原来的悬浮按钮）。 */
 @Composable
 private fun ImportPlus(onClick: () -> Unit) {
-    Box(Modifier.size(44.dp).soft(CircleShape, 1).clip(CircleShape).background(P.surface)
+    Box(Modifier.size(48.dp).glass(CircleShape, floating = true)
         .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick).semantics { contentDescription = "导入" }, contentAlignment = Alignment.Center) {
         Ic(R.drawable.ic_plus, P.accent, 22)
     }
@@ -312,7 +312,7 @@ private fun SearchPill(q: String, onQ: (String) -> Unit, active: Boolean, hint: 
     val focus = LocalFocusManager.current
     val req = remember { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(active) { if (active && !readOnly) runCatching { req.requestFocus() } }
-    Row(modifier.height(44.dp).soft(CircleShape, 1).clip(CircleShape).background(P.surface)
+    Row(modifier.height(48.dp).glass(CircleShape, floating = true)
         .clickable(onClick = onActivate).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Ic(R.drawable.ic_search, P.text3, 20); Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>拾页 · Liquid Glass Home</title>
+<link rel="stylesheet" href="lg/tokens.css"/>
+<link rel="stylesheet" href="lg/liquid-glass.css"/>
+<style>
+html,body{width:390px;height:844px;margin:0;overflow:hidden;font-family:"Noto Sans CJK SC","PingFang SC",-apple-system,sans-serif;color:#0F1522;-webkit-font-smoothing:antialiased}
+.wallpaper{position:fixed;inset:-10%;z-index:0;background:
+  radial-gradient(45% 55% at 12% 18%, #7EB6FF 0%, rgba(126,182,255,0) 62%),
+  radial-gradient(50% 60% at 88% 12%, #B8A0FF 0%, rgba(184,160,255,0) 60%),
+  radial-gradient(55% 65% at 70% 88%, #5CC8FF 0%, rgba(92,200,255,0) 58%),
+  radial-gradient(50% 55% at 18% 85%, #FF9EC8 0%, rgba(255,158,200,0) 55%),
+  linear-gradient(160deg,#D8E6FA,#B9CBF0 55%,#A8BEE8)}
+.wallpaper .bg-text{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 18px;font-weight:800;letter-spacing:-.03em;line-height:.9;font-size:88px;color:rgba(255,255,255,.22);user-select:none;pointer-events:none}
+.wallpaper .bg-text span:nth-child(2){text-align:right;color:rgba(255,255,255,.14);font-size:72px}
+.screen{position:relative;width:390px;height:844px;z-index:1}
+.sb{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 10px 32px;font-size:15px;font-weight:600;z-index:40}
+.sbr{display:flex;gap:7px;align-items:center}
+.gest{position:absolute;bottom:10px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#0F1522;opacity:.8;z-index:50}
+.top{position:absolute;top:62px;left:16px;right:16px;display:flex;gap:10px;z-index:20}
+.search{flex:1;height:48px;border-radius:24px;--lg-radius:24px;display:flex;align-items:center;gap:10px;padding:0 16px;color:rgba(15,21,34,.62);font-size:15px;font-weight:500}
+.plus{width:48px;height:48px;border-radius:24px;--lg-radius:24px;display:flex;align-items:center;justify-content:center;color:#2F6BFF}
+.sec{padding:0 22px;margin:16px 0 10px;font-size:20px;font-weight:700;letter-spacing:-.4px}
+.hero{margin:0 16px;border-radius:26px;padding:14px;display:flex;gap:14px;background:rgba(255,255,255,.78);box-shadow:0 12px 36px -14px rgba(20,40,90,.28);backdrop-filter:blur(2px)}
+.cv{width:78px;height:104px;border-radius:14px;flex:none;background:linear-gradient(160deg,#2A3A68,#1A2748);color:#F4E9D0;padding:10px 9px;display:flex;flex-direction:column;font-family:"Noto Serif CJK SC",serif;box-shadow:0 8px 18px -6px rgba(0,0,0,.35)}
+.cv .ey{font-size:8px;letter-spacing:.08em;opacity:.7;font-family:"Noto Sans CJK SC",sans-serif;font-weight:600}
+.cv .ru{height:.5px;background:currentColor;opacity:.35;margin:7px 0 8px}
+.cv .ti{font-size:13px;line-height:17px;font-weight:700}
+.cv .su{font-size:10px;opacity:.7;margin-top:4px;font-family:"Noto Sans CJK SC",sans-serif}
+.hero h3{font-size:17px;line-height:24px;font-weight:650;margin-top:4px}
+.pbar{height:3px;border-radius:2px;background:rgba(15,21,34,.1);overflow:hidden;margin-top:10px}
+.pbar i{display:block;height:100%;width:38%;background:#2F6BFF;border-radius:2px}
+.pmeta{font-size:12px;color:#4A5568;margin-top:8px}
+.car{display:flex;gap:12px;padding:0 16px;overflow:hidden}
+.car .c{width:112px;flex:none}
+.car .cap{font-size:13px;line-height:18px;font-weight:600;margin-top:10px;height:36px;overflow:hidden}
+.car .mt{font-size:11px;color:#6B778A;margin-top:4px}
+.list{margin:14px 16px 0;border-radius:22px;overflow:hidden;background:rgba(255,255,255,.78);box-shadow:0 10px 28px -14px rgba(20,40,90,.25)}
+.lrow{display:flex;gap:14px;align-items:center;padding:12px 14px}
+.lrow+.lrow{border-top:.5px solid rgba(15,21,34,.08)}
+.mini{width:44px;height:58px;border-radius:10px;flex:none;background:linear-gradient(160deg,#3D5A9A,#243968)}
+.lrow .tt{font-size:15px;font-weight:600}.lrow .mt{font-size:12px;color:#6B778A;margin-top:3px}
+.nav{position:absolute;left:18px;right:18px;bottom:28px;height:64px;border-radius:32px;--lg-radius:32px;display:flex;align-items:center;padding:0 8px;z-index:30}
+.nav .n{flex:1;height:48px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:500;color:rgba(15,21,34,.65)}
+.nav .n.on{background:rgba(47,107,255,.18);color:#2F6BFF;font-weight:700}
+</style></head><body>
+<div class="wallpaper"><div class="bg-text"><span>拾页</span><span>SHIYE</span></div></div>
+<div class="screen">
+<div class="sb"><span>9:41</span><span class="sbr">
+<svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".8" fill="currentColor"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8" fill="currentColor"/><rect x="10" y="3" width="3" height="9" rx=".8" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx=".8" fill="currentColor"/></svg>
+<svg width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1.5 4.2a9 9 0 0114 0M4 6.9a5.6 5.6 0 019 0"/><circle cx="8.5" cy="10" r="1.2" fill="currentColor" stroke="none"/></svg>
+<svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.8" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="18" height="9" rx="2.4" fill="currentColor"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="currentColor" opacity=".45"/></svg>
+</span></div><div class="gest"></div>
+<div class="top">
+  <div class="lg-glass search" data-glass data-lg-refraction="20" data-lg-bezel="24"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>在书库中搜索</div>
+  <div class="lg-glass plus" data-glass data-lg-refraction="20" data-lg-bezel="24"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+</div>
+<div style="position:absolute;top:126px;left:0;right:0;bottom:110px;overflow:hidden">
+  <div class="sec">继续阅读</div>
+  <div class="hero">
+    <div class="cv"><div class="ey">分享</div><div class="ru"></div><div class="ti">造景的人</div><div class="su">李翰祥</div></div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:4px 2px">
+      <div><div style="font-size:12px;color:#6B778A">昨晚读到这里</div><h3>造景的人</h3></div>
+      <div><div class="pbar"><i></i></div><div class="pmeta">38% · 还剩 11 分钟</div></div>
+    </div>
+  </div>
+  <div class="sec" style="margin-top:18px">最近</div>
+  <div class="car">
+    <div class="c"><div class="cv" style="width:112px;height:150px;padding:12px 11px;background:linear-gradient(160deg,#4A6FA8,#2C4570)"><div class="ey">微信</div><div class="ru"></div><div class="ti" style="font-size:15px;line-height:20px">在《太太万岁》与《梁祝》之间</div></div><div class="cap">在《太太万岁》与《梁祝》之间</div><div class="mt">约 9 分钟</div></div>
+    <div class="c"><div class="cv" style="width:112px;height:150px;padding:12px 11px;background:linear-gradient(160deg,#6B5A8E,#3A2F55)"><div class="ey">导入</div><div class="ru"></div><div class="ti" style="font-size:15px;line-height:20px">夜航影话选</div></div><div class="cap">夜航影话选</div><div class="mt">约 14 分钟</div></div>
+    <div class="c"><div class="cv" style="width:112px;height:150px;padding:12px 11px;background:linear-gradient(160deg,#3E7A6A,#21483C)"><div class="ey">网页</div><div class="ru"></div><div class="ti" style="font-size:15px;line-height:20px">胶片年代的光</div></div><div class="cap">胶片年代的光</div><div class="mt">约 6 分钟</div></div>
+  </div>
+  <div class="list">
+    <div class="lrow"><div class="mini"></div><div><div class="tt">从影楼到片场</div><div class="mt">分享 · 10月28日 · 约 12 分钟</div></div></div>
+    <div class="lrow"><div class="mini" style="background:linear-gradient(160deg,#8A5A4A,#4A2E26)"></div><div><div class="tt">香港新浪潮备忘</div><div class="mt">导入 · 10月22日 · 约 20 分钟</div></div></div>
+  </div>
+</div>
+<div class="lg-glass nav" data-glass data-lg-refraction="22" data-lg-bezel="26">
+  <div class="n on"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V7l8-3 8 3v12"/><path d="M12 4v15"/></svg>阅读</div>
+  <div class="n"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="5" width="7" height="7" rx="1.5"/><rect x="13" y="5" width="7" height="7" rx="1.5"/><rect x="4" y="14" width="7" height="5" rx="1.5"/><rect x="13" y="14" width="7" height="5" rx="1.5"/></svg>书库</div>
+  <div class="n"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="9" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0113 0"/></svg>我的</div>
+</div>
+</div>
+<script src="lg/liquid-glass.js"></script>
+<script>
+  LiquidGlass.init({ refraction: 22, bezel: 26, blur: 2.5, tintHue: 220, tintAlpha: 0.08, specular: 1.05 });
+</script>
+</body></html>

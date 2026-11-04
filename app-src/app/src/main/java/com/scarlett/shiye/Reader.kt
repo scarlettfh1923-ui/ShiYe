@@ -169,10 +169,6 @@ fun MdReader(vm: AppVm, doc: Doc, onExport: () -> Unit) {
     val text by produceState<String?>(null, doc.id) { value = withContext(Dispatchers.IO) { Library.readText(doc) } }
     val blocks = remember(text) { text?.let { Markdown.parse(it) }.orEmpty().let { b -> val f = b.firstOrNull(); if (f is MdBlock.Heading && f.level == 1 && f.segs.plain().trim() == doc.title.trim()) b.drop(1) else b } }
     val tags = remember(text) { text?.let { Markdown.tags(Markdown.stripFrontMatter(it).second) }.orEmpty() }
-    val dek = remember(text, doc.snippet) {
-        val m = text?.let { Markdown.stripFrontMatter(it).second }.orEmpty()
-        (m["description"] ?: m["summary"] ?: m["excerpt"] ?: doc.snippet.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty()).trim()
-    }
     val words = remember(text) { text?.let { wordCount(Markdown.stripFrontMatter(it).first) } ?: 0 }
     val heads = remember(blocks) { blocks.mapIndexedNotNull { i, b -> if (b is MdBlock.Heading && b.level <= 3) Head(i + 1, b.level, b.segs.plain()) else null } }
     val state = rememberLazyListState(initialFirstVisibleItemIndex = doc.pos)
@@ -220,7 +216,7 @@ fun MdReader(vm: AppVm, doc: Doc, onExport: () -> Unit) {
                     LazyColumn(state = state, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(style.gap),
                         contentPadding = PaddingValues(start = side, end = side, top = statusH + 16.dp, bottom = navH + 120.dp)) {
                         item(key = "title") {
-                            ReaderTitleHeader(doc, tags, dek, words, heads.size, prefs.fontScale, Modifier.padding(bottom = 16.dp))
+                            ReaderTitleHeader(doc, tags, words, heads.size, prefs.fontScale, Modifier.padding(bottom = 16.dp))
                         }
                         items(blocks.size) { i -> Block(blocks[i], style) }
                         item(key = "end") { Text("— 读完了 —", color = P.text3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(top = 28.dp), textAlign = TextAlign.Center) }
