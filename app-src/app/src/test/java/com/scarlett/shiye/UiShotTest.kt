@@ -29,7 +29,7 @@ import java.io.FileOutputStream
 @Config(sdk = [34], qualifiers = "w393dp-h852dp-xxhdpi")
 class UiShotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
-    private val out = File("/workspace/apk-project/ShiYe/screenshots/v2.1").apply { mkdirs() }
+    private val out = File("/workspace/apk-project/ShiYe/screenshots/v2.1.4").apply { mkdirs() }
 
     private fun shot(name: String, wait: Long = 0) {
         if (wait > 0) { repeat(10) { Thread.sleep(wait / 10); rule.mainClock.advanceTimeBy(200); rule.waitForIdle() } }

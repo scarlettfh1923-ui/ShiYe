@@ -60,22 +60,73 @@ fun coverDate(t: Long, now: Long = System.currentTimeMillis()): String {
     return when { diff <= 0 -> "今天"; diff == 1L -> "昨天"; else -> SimpleDateFormat("M月d日", Locale.CHINA).format(Date(t)) }
 }
 
-private class CoverColors(val bg: Color, val fg: Color, val dot: Color)
-private val lightCovers = listOf(
-    CoverColors(Color(0xFFFFFFFF), Color(0xFF0F1522), Color(0xFF2F6BFF)),
-    CoverColors(Color(0xFFE8EFFF), Color(0xFF142A5C), Color(0xFF2F6BFF)),
-    CoverColors(Color(0xFF2F6BFF), Color(0xFFFFFFFF), Color(0xFFFFFFFF)),
-    CoverColors(Color(0xFFEDF0F5), Color(0xFF1B2434), Color(0xFF2F6BFF)),
-)
-private val darkCovers = listOf(
-    CoverColors(Color(0xFF1B2230), Color(0xFFE8EDF5), Color(0xFF5B8CFF)),
-    CoverColors(Color(0xFF1B2A4D), Color(0xFFDCE6FF), Color(0xFF5B8CFF)),
-    CoverColors(Color(0xFF3A6BEA), Color(0xFFFFFFFF), Color(0xFFFFFFFF)),
-    CoverColors(Color(0xFF242C3A), Color(0xFFDDE3EE), Color(0xFF5B8CFF)),
+/**
+ * 书架封面调色：按来源定主调，深色渐变 + 奶油字为主。
+ * top/bottom 组成对角渐变；lightFace=true 时浅底深字（备忘录）。
+ */
+class CoverPalette(
+    val top: Color,
+    val bottom: Color,
+    val fg: Color,
+    val dot: Color,
+    val lightFace: Boolean = false,
 )
 
-/** 每篇文档固定一个底色（白 / 浅蓝 / 主蓝 / 灰），按标题散列，换列表也不会变。 */
-fun coverVariant(d: Doc): Int = ((d.title.hashCode() * 31 + d.id.hashCode()) and 0x7fffffff) % 4
+/** 每个来源族 3 档明暗变体（同族内细调，同 Doc 稳定）。 */
+private fun shades(a: CoverPalette, b: CoverPalette, c: CoverPalette) = listOf(a, b, c)
+
+private val wechatFamily = shades(
+    CoverPalette(Color(0xFF5C3A22), Color(0xFF2A1810), Color(0xFFF3E6D4), Color(0xFFE8B86D)),
+    CoverPalette(Color(0xFF6B4428), Color(0xFF3A2416), Color(0xFFF6EBDA), Color(0xFFD9A05C)),
+    CoverPalette(Color(0xFF4A2E1A), Color(0xFF1F120C), Color(0xFFEEDCC6), Color(0xFFC9924A)),
+)
+private val webFamily = shades(
+    CoverPalette(Color(0xFF1F4A3A), Color(0xFF0E241C), Color(0xFFE4F0E8), Color(0xFF7BC4A0)),
+    CoverPalette(Color(0xFF245744), Color(0xFF123028), Color(0xFFE8F3EC), Color(0xFF6BB894)),
+    CoverPalette(Color(0xFF183C30), Color(0xFF0A1C16), Color(0xFFDCEAE2), Color(0xFF5AAA88)),
+)
+private val githubFamily = shades(
+    CoverPalette(Color(0xFF2A3038), Color(0xFF12151A), Color(0xFFE8ECF0), Color(0xFF8B95A5)),
+    CoverPalette(Color(0xFF323844), Color(0xFF181C22), Color(0xFFEDF0F4), Color(0xFF9AA3B0)),
+    CoverPalette(Color(0xFF222830), Color(0xFF0E1014), Color(0xFFE2E6EA), Color(0xFF7A8494)),
+)
+private val memoFamily = shades(
+    CoverPalette(Color(0xFFF3E8D8), Color(0xFFE4D2BA), Color(0xFF3A2A1A), Color(0xFFC48A4A), lightFace = true),
+    CoverPalette(Color(0xFFEFE2CE), Color(0xFFDCC6A8), Color(0xFF342416), Color(0xFFB87A3E), lightFace = true),
+    CoverPalette(Color(0xFFF7EDDF), Color(0xFFE8D6C0), Color(0xFF403020), Color(0xFFD09A58), lightFace = true),
+)
+private val fileFamily = shades(
+    CoverPalette(Color(0xFF2A3A52), Color(0xFF141E2E), Color(0xFFE4EAF4), Color(0xFF7A9AD0)),
+    CoverPalette(Color(0xFF314260), Color(0xFF182436), Color(0xFFE8EEF6), Color(0xFF6A8CC4)),
+    CoverPalette(Color(0xFF243248), Color(0xFF101828), Color(0xFFDEE4EE), Color(0xFF8AA8D8)),
+)
+private val fallbackFamily = shades(
+    CoverPalette(Color(0xFF2F6BFF), Color(0xFF163680), Color(0xFFE8F0FF), Color(0xFFB8D0FF)),
+    CoverPalette(Color(0xFF3A76FF), Color(0xFF1A3C8C), Color(0xFFECF2FF), Color(0xFFA8C4FF)),
+    CoverPalette(Color(0xFF2558E0), Color(0xFF122E6A), Color(0xFFE2ECFF), Color(0xFF9AB8FF)),
+)
+
+private fun coverFamily(src: String): List<CoverPalette> {
+    val n = sourceName(src).lowercase()
+    return when {
+        n.contains("微信") || n.contains("wechat") || n.contains("weixin") -> wechatFamily
+        n.contains("safari") || n.contains("chrome") || n.contains("网页") || n.contains("浏览器")
+            || n.contains("firefox") || n.contains("edge") || n.contains("brave") -> webFamily
+        n.contains("github") -> githubFamily
+        n.contains("备忘录") || n.contains("备忘") || n.contains("notes") || n.contains("便签") -> memoFamily
+        n.contains("文件") || n.contains("粘贴") || n.contains("导入") || n.contains("打开")
+            || n.contains("file") || n.contains("paste") || n.contains("import") -> fileFamily
+        else -> fallbackFamily
+    }
+}
+
+fun coverPalette(d: Doc, variant: Int = coverVariant(d)): CoverPalette {
+    val fam = coverFamily(d.source)
+    return fam[variant.coerceIn(0, fam.lastIndex)]
+}
+
+/** 同一来源内 3 档明暗变体，按标题+id 散列，换列表仍稳定。 */
+fun coverVariant(d: Doc): Int = ((d.title.hashCode() * 31 + d.id.hashCode()) and 0x7fffffff) % 3
 
 enum class CoverSize(val w: Int, val h: Int, val p: Float, val eyebrow: Float, val title: Float, val lh: Float, val sub: Float, val sl: Float, val radius: Int, val lines: Int) {
     Card(112, 150, 12f, 8f, 14f, 19f, 10.5f, 15f, 10, 4),
@@ -89,8 +140,7 @@ enum class CoverSize(val w: Int, val h: Int, val p: Float, val eyebrow: Float, v
  */
 @Composable
 fun TypoCover(d: Doc, size: CoverSize, modifier: Modifier = Modifier, variant: Int = coverVariant(d)) {
-    val dark = P.dark
-    val c = (if (dark) darkCovers else lightCovers)[variant and 3]
+    val c = remember(d.source, d.title, d.id, variant) { coverPalette(d, variant) }
     val density = LocalDensity.current
     BoxWithConstraints(modifier) {
         val k = (maxWidth.value / size.w).coerceAtLeast(0.3f)
@@ -101,14 +151,16 @@ fun TypoCover(d: Doc, size: CoverSize, modifier: Modifier = Modifier, variant: I
         val mini = size == CoverSize.Mini
         var tl by remember(d.title, k) { mutableIntStateOf(0) }
         val titleMax = if (!mini && sub.isNotEmpty()) size.lines - 1 else size.lines
-        Box(Modifier.fillMaxSize().soft(shape, 3).clip(shape).background(c.bg)
+        val brush = Brush.linearGradient(listOf(c.top, c.bottom), start = Offset.Zero, end = Offset.Infinite)
+        val edge = if (c.lightFace) Color(0x220F1522) else Color(0x28FFFFFF)
+        Box(Modifier.fillMaxSize().soft(shape, 3).clip(shape).background(brush)
             .drawWithContent {
                 drawContent()
                 // 书脊：左侧 5dp 的明暗渐变
                 val sw = 5.dp.toPx() * k
-                drawRect(Brush.horizontalGradient(0f to Color(0x17000000), 0.55f to Color(0x24FFFFFF), 1f to Color.Transparent, startX = 0f, endX = sw), size = androidx.compose.ui.geometry.Size(sw, this.size.height))
+                drawRect(Brush.horizontalGradient(0f to Color(0x22000000), 0.55f to Color(0x28FFFFFF), 1f to Color.Transparent, startX = 0f, endX = sw), size = androidx.compose.ui.geometry.Size(sw, this.size.height))
             }
-            .border(0.5.dp, Color(if (dark) 0x1FFFFFFF else 0x140F1522), shape)) {
+            .border(0.5.dp, edge, shape)) {
             Column(Modifier.fillMaxSize().padding(start = dp(size.p + 3f), top = dp(size.p), end = dp(size.p), bottom = dp(size.p))) {
                 if (!mini) {
                     Text(sourceName(d.source), color = c.fg.copy(alpha = 0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis,
