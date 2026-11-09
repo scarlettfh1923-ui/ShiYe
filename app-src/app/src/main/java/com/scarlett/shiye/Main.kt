@@ -97,6 +97,35 @@ class AppVm(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------------- 网页抓取 ----------------
+    /** 抓取进度：stage 文案 + 0..1 进度；null 表示没有在抓。用 StateFlow，后台线程更新也安全。 */
+    data class ClipUi(val url: String, val site: String, val stage: String, val progress: Float)
+    val clip = kotlinx.coroutines.flow.MutableStateFlow<ClipUi?>(null)
+    /** 首页剪贴板检测到的新链接（显示「检测到链接，抓取文章？」） */
+    var clipPrompt by mutableStateOf<String?>(null)
+    private var clipJob: Job? = null
+
+    fun startClip(rawUrl: String) {
+        val url = ClipUrl.normalize(rawUrl) ?: run { toast("这不是可以抓取的网页链接"); return }
+        if (clipJob?.isActive == true) { toast("正在抓取上一篇，请稍候"); return }
+        val site = ClipUrl.classify(url).site.label
+        clip.value = ClipUi(url, site, "准备抓取…", 0.02f)
+        clipJob = viewModelScope.launch {
+            val r = runCatching { ClipFetcher.run(getApplication(), url) { stage, p -> clip.value = clip.value?.copy(stage = stage, progress = p) } }
+            clip.value = null
+            r.onSuccess { res ->
+                openDoc(res.doc.id)
+                toast(when {
+                    res.existed -> "这篇已经在书库里了"
+                    res.note.isNotEmpty() -> res.note
+                    res.failedImages > 0 -> "已存入拾页 · ${res.failedImages} 张图没下载下来，保留了原图链接"
+                    else -> "已抓取并存入拾页" + if (res.images > 0) " · ${res.images} 张图" else ""
+                })
+            }.onFailure { if (it !is kotlinx.coroutines.CancellationException) toast(it.message?.takeIf { m -> m.isNotBlank() && it is ClipException } ?: "没能抓取：网络不通或超时，稍后再试") }
+        }
+    }
+    fun cancelClip() { clipJob?.cancel(); clipJob = null; clip.value = null; toast("已取消抓取") }
+
     fun syncNotion(doc: Doc) {
         if (busy != null) return
         if (!prefs.notionReady) { toast("先配置 Notion：设置 → Notion 同步"); push(Route.NotionSettings); return }
@@ -129,8 +158,9 @@ class MainActivity : ComponentActivity() {
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); handle(intent) }
 
-    /** 只接受自己 ImportActivity 传来的、符合格式的文档 ID；其余内容一概忽略 */
+    /** 只接受自己 ImportActivity 传来的、符合格式的文档 ID；其余内容一概忽略。待抓取的链接走进程内的 PendingClip，不读 Intent。 */
     private fun handle(i: Intent?) {
+        PendingClip.take()?.let { vm.startClip(it) }
         val id = i?.getStringExtra(EXTRA_OPEN_ID)?.takeIf { Regex("[0-9a-f]{16}").matches(it) } ?: return
         i.removeExtra(EXTRA_OPEN_ID)
         vm.openDoc(id)
@@ -169,6 +199,8 @@ fun ShiyeRoot(vm: AppVm) {
                     entry<Route.NotionSettings> { NotionScreen(vm) }
                 },
             )
+            val clipUi by vm.clip.collectAsState()
+            ClipProgressCard(clipUi, onCancel = { vm.cancelClip() }, modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = 96.dp))
             Toaster(vm.toastMsg, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = 96.dp))
             vm.busy?.let { BusyOverlay(it) }
             vm.notionDone?.let { (doc, res) ->

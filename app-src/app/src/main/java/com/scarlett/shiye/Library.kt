@@ -24,16 +24,17 @@ data class Doc(
     val notionUrl: String = "", val notionPageId: String = "", val notionTarget: String = "", val notionAt: Long = 0,
     val script: Boolean = false, val desktop: Boolean = false,
     val progress: Float = 0f, val pos: Int = 0,
+    val url: String = "",          // 网页抓取的原文链接（去重、回看原文用）
 ) {
     fun toJson() = JSONObject().put("id", id).put("title", title).put("type", type.name).put("main", main).put("bundle", bundle)
         .put("createdAt", createdAt).put("openedAt", openedAt).put("size", size).put("fav", fav).put("source", source)
         .put("snippet", snippet).put("hash", hash).put("notionUrl", notionUrl).put("notionPageId", notionPageId)
-        .put("notionTarget", notionTarget).put("notionAt", notionAt).put("script", script).put("desktop", desktop).put("progress", progress.toDouble()).put("pos", pos)
+        .put("notionTarget", notionTarget).put("notionAt", notionAt).put("script", script).put("desktop", desktop).put("progress", progress.toDouble()).put("pos", pos).put("url", url)
     companion object {
         fun from(j: JSONObject) = Doc(j.getString("id"), j.optString("title"), runCatching { DocType.valueOf(j.optString("type")) }.getOrDefault(DocType.MD),
             j.optString("main"), j.optBoolean("bundle"), j.optLong("createdAt"), j.optLong("openedAt"), j.optLong("size"), j.optBoolean("fav"),
             j.optString("source"), j.optString("snippet"), j.optString("hash"), j.optString("notionUrl"), j.optString("notionPageId"),
-            j.optString("notionTarget"), j.optLong("notionAt"), j.optBoolean("script"), j.optBoolean("desktop"), j.optDouble("progress", 0.0).toFloat(), j.optInt("pos"))
+            j.optString("notionTarget"), j.optLong("notionAt"), j.optBoolean("script"), j.optBoolean("desktop"), j.optDouble("progress", 0.0).toFloat(), j.optInt("pos"), j.optString("url"))
     }
 }
 
@@ -93,6 +94,7 @@ object Library {
 
     internal fun add(d: Doc) = synchronized(lock) { val l = listOf(d) + _docs.value; persist(l); _docs.value = l }
     fun findByHash(h: String) = _docs.value.firstOrNull { it.hash == h }
+    fun findByUrl(u: String) = if (u.isBlank()) null else _docs.value.firstOrNull { it.url == u }
     fun newId() = UUID.randomUUID().toString().replace("-", "").take(16)
     fun readText(d: Doc): String = runCatching { mainFile(d).readText(Charsets.UTF_8) }.getOrDefault("")
     // ---- 编辑：覆盖保存，并保留「上一版」备份（只留一份）----
@@ -139,8 +141,8 @@ object Importer {
     fun sha1(b: ByteArray): String = MessageDigest.getInstance("SHA-1").digest(b).joinToString("") { "%02x".format(it) }.take(20)
 
     fun snippetOf(text: String, type: DocType): String {
-        val plain = if (type == DocType.HTML) HtmlText.toMarkdown(text) else text
-        return plain.lineSequence().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("```") && !it.startsWith("---") && !it.startsWith("# ") }
+        val plain = if (type == DocType.HTML) HtmlText.toMarkdown(text) else Markdown.stripFrontMatter(text).first
+        return plain.lineSequence().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("```") && !it.startsWith("---") && !it.startsWith("# ") && !it.contains("](shiye-img://") && !(it.startsWith(">") && it.contains("[查看原文](")) && !it.startsWith("> ⚠") }
             .map { it.trimStart('#', '>', '-', '*', ' ').replace(Regex("!\\[[^]]*]\\([^)]*\\)"), "").replace(Regex("\\[([^]]*)]\\([^)]*\\)"), "$1").replace(Regex("[*_`~]"), "") }
             .filter { it.isNotBlank() }.take(8).joinToString("\n").take(360)
     }
@@ -231,6 +233,16 @@ object Importer {
         File(dir, main).writeBytes(bytes)
         val now = System.currentTimeMillis()
         val d = Doc(id, title, type, main, false, now, now, bytes.size.toLong(), false, source, snippetOf(text, type), h)
+        Library.add(d); return d
+    }
+
+    /** 网页抓取：目录（含 images/）已由 ClipFetcher 写好，这里写正文并登记进书库 */
+    fun saveClip(id: String, dir: File, md: String, title: String, source: String, url: String, hasImages: Boolean): Doc {
+        dir.mkdirs()
+        val bytes = md.toByteArray(Charsets.UTF_8)
+        File(dir, "doc.md").writeBytes(bytes)
+        val now = System.currentTimeMillis()
+        val d = Doc(id, title.take(80), DocType.MD, "doc.md", hasImages, now, now, bytes.size.toLong(), false, source, snippetOf(md, DocType.MD), sha1(bytes), url = url)
         Library.add(d); return d
     }
 

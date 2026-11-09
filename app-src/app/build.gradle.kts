@@ -14,7 +14,7 @@ android {
   compileSdk = 36
   defaultConfig {
     applicationId = "com.scarlett.shiye"
-    minSdk = 29; targetSdk = 35; versionCode = 8; versionName = "2.1.4"
+    minSdk = 29; targetSdk = 35; versionCode = 9; versionName = "2.2.0"
   }
   signingConfigs {
     if (signProps.isNotEmpty()) create("release") {
@@ -51,6 +51,9 @@ dependencies {
   implementation("androidx.navigation3:navigation3-runtime:1.0.1")
   implementation("androidx.navigation3:navigation3-ui:1.0.1")
   implementation("androidx.webkit:webkit:1.11.0")
+  // 网页抓取：OkHttp 负责联网（可取消），jsoup 解析 HTML
+  implementation("com.squareup.okhttp3:okhttp:4.12.0")
+  implementation("org.jsoup:jsoup:1.18.3")
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.json:json:20231013")
   testImplementation("org.robolectric:robolectric:4.13")

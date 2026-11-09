@@ -63,6 +63,12 @@ class Prefs(ctx: Context) {
     fun saveNotionTagsProp(v: String) { notionTagsProp = v.trim(); sp.edit().putString("notionTagsProp", notionTagsProp).apply() }
     fun saveNotionToken(v: String) { notionToken = v.trim(); sp.edit().putString("notionTokenEnc", Secure.put(appCtx, notionToken)).apply() }
     val notionReady get() = notionToken.isNotBlank() && notionTarget.isNotBlank()
+    // 剪贴板链接提示：同一链接只提示一次（最多记 80 条）；记住上次检查过的剪贴时间戳
+    val clipStamp: Long get() = sp.getLong("clipStamp", 0L)
+    fun saveClipStamp(v: Long) { sp.edit().putLong("clipStamp", v).apply() }
+    private fun prompted(): List<String> = (sp.getString("clipPrompted", "") ?: "").split('\n').filter { it.isNotBlank() }
+    fun wasPrompted(url: String) = url in prompted()
+    fun markPrompted(url: String) { val l = (prompted() - url + url).takeLast(80); sp.edit().putString("clipPrompted", l.joinToString("\n")).apply() }
 }
 
 /** Notion Token 用 Android Keystore 里的 AES-GCM 密钥加密后再存盘，明文不落地。 */

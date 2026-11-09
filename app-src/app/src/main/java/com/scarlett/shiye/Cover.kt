@@ -100,6 +100,18 @@ private val fileFamily = shades(
     CoverPalette(Color(0xFF314260), Color(0xFF182436), Color(0xFFE8EEF6), Color(0xFF6A8CC4)),
     CoverPalette(Color(0xFF243248), Color(0xFF101828), Color(0xFFDEE4EE), Color(0xFF8AA8D8)),
 )
+/** 知乎：深蓝（与主蓝拉开明度，偏墨） */
+private val zhihuFamily = shades(
+    CoverPalette(Color(0xFF1B3A6B), Color(0xFF0B1A36), Color(0xFFE3ECFA), Color(0xFF6FA0E8)),
+    CoverPalette(Color(0xFF22467F), Color(0xFF102244), Color(0xFFE8F0FC), Color(0xFF5C8EDC)),
+    CoverPalette(Color(0xFF16325E), Color(0xFF08142B), Color(0xFFDCE6F6), Color(0xFF7FAAEC)),
+)
+/** 豆瓣：墨绿偏橄榄（比「网页」的墨绿更黄、更暖） */
+private val doubanFamily = shades(
+    CoverPalette(Color(0xFF3F4A24), Color(0xFF1E2410), Color(0xFFEEF0DC), Color(0xFFB5C26A)),
+    CoverPalette(Color(0xFF4A5629), Color(0xFF262D14), Color(0xFFF1F3E2), Color(0xFFA6B45C)),
+    CoverPalette(Color(0xFF353F1E), Color(0xFF181D0C), Color(0xFFE6E9D2), Color(0xFFC0CC78)),
+)
 private val fallbackFamily = shades(
     CoverPalette(Color(0xFF2F6BFF), Color(0xFF163680), Color(0xFFE8F0FF), Color(0xFFB8D0FF)),
     CoverPalette(Color(0xFF3A76FF), Color(0xFF1A3C8C), Color(0xFFECF2FF), Color(0xFFA8C4FF)),
@@ -109,7 +121,9 @@ private val fallbackFamily = shades(
 private fun coverFamily(src: String): List<CoverPalette> {
     val n = sourceName(src).lowercase()
     return when {
-        n.contains("微信") || n.contains("wechat") || n.contains("weixin") -> wechatFamily
+        n.contains("微信") || n.contains("wechat") || n.contains("weixin") || n.contains("公众号") -> wechatFamily
+        n.contains("知乎") || n.contains("zhihu") -> zhihuFamily
+        n.contains("豆瓣") || n.contains("douban") -> doubanFamily
         n.contains("safari") || n.contains("chrome") || n.contains("网页") || n.contains("浏览器")
             || n.contains("firefox") || n.contains("edge") || n.contains("brave") -> webFamily
         n.contains("github") -> githubFamily

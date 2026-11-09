@@ -29,7 +29,7 @@ import java.io.FileOutputStream
 @Config(sdk = [34], qualifiers = "w393dp-h852dp-xxhdpi")
 class UiShotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
-    private val out = File("/workspace/apk-project/ShiYe/screenshots/v2.1.4").apply { mkdirs() }
+    private val out = File("/workspace/apk-project/ShiYe/screenshots/v2.2.0").apply { mkdirs() }
 
     private fun shot(name: String, wait: Long = 0) {
         if (wait > 0) { repeat(10) { Thread.sleep(wait / 10); rule.mainClock.advanceTimeBy(200); rule.waitForIdle() } }
@@ -100,6 +100,53 @@ class UiShotTest {
     @Test fun export() {
         val (vm, id) = setup(); vm.openDoc(id, export = true); shot("06_export", 6000)
     }
+    // ---------- 2.2.0 网页抓取 ----------
+    @Test fun clipPrompt() {
+        val (vm, _) = setup(); shot("x", 300)
+        vm.clipPrompt = "https://zhuanlan.zhihu.com/p/1895498000702363235"
+        shot("12_clip_prompt", 800)
+    }
+    @Test fun clipPasteSheet() {
+        val (vm, _) = setup(); shot("x", 300)
+        rule.onNodeWithContentDescription("导入").performClick(); shot("13_clip_paste_sheet", 1000)
+    }
+    @Test fun clipProgress() {
+        val (vm, _) = setup(); shot("x", 300)
+        vm.clip.value = AppVm.ClipUi("https://mp.weixin.qq.com/s/2fBjEf6kDX0245-tMgS5uA", "微信", "下载图片 7/16", 0.62f)
+        shot("14_clip_progress", 800)
+    }
+    @Test fun clipReader() {
+        val (vm, _) = setup()
+        val id = clipDoc()
+        vm.openDoc(id); shot("15_clip_reader", 1500)
+    }
+    @Test fun clipLibrary() {
+        val (vm, _) = setup()
+        clipDoc(); clipDoc("zhihu_article.html", "https://zhuanlan.zhihu.com/p/1895498000702363235"); clipDoc("wechat.html", "https://mp.weixin.qq.com/s/2fBjEf6kDX0245-tMgS5uA")
+        vm.tab = Tab.Library; shot("16_clip_library", 600)
+    }
+
+    /** 用保存的真实样本走一遍「提取 → Markdown → 图片落盘（这里用生成的示意图代替下载）→ 存书库」 */
+    private fun clipDoc(fixture: String = "douban_note.json", url: String = "https://www.douban.com/note/870769226/"): String {
+        val t = ClipUrl.classify(url)
+        val raw = javaClass.classLoader!!.getResource("clip/$fixture")!!.readText()
+        val ex = if (fixture.endsWith(".json")) ClipExtract.doubanJson(raw, t) else ClipExtract.extract(raw, t)
+        val conv = HtmlToMd(t.pageUrl, ex.imgMap); var body = conv.convert(ex.content!!)
+        val id = Library.newId(); val dir = File(Library.rootDir, id); val img = File(dir, "images").apply { mkdirs() }
+        val colors = intArrayOf(0xFFDCE6F6.toInt(), 0xFFEEF0DC.toInt(), 0xFFF3E6D4.toInt())
+        conv.images.indices.forEach { i ->
+            if (i < 3) {
+                val b = android.graphics.Bitmap.createBitmap(1080, 720, android.graphics.Bitmap.Config.ARGB_8888); b.eraseColor(colors[i % 3])
+                val c = android.graphics.Canvas(b); val p = android.graphics.Paint().apply { color = 0xFF2F6BFF.toInt(); textSize = 64f; isAntiAlias = true }
+                c.drawText("图 ${i + 1} · 本地图片", 80f, 380f, p)
+                FileOutputStream(File(img, "%03d.png".format(i + 1))).use { b.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                body = body.replace("(shiye-img://$i)", "(images/%03d.png)".format(i + 1))
+            } else body = body.replace("(shiye-img://$i)", "(${conv.images[i]})")
+        }
+        val md = ClipMd.compose(ex, t, body, "2026-11-09 16:00")
+        return Importer.saveClip(id, dir, md, ex.title, "抓取 · ${t.site.label}", t.url, true).id
+    }
+
     @Test fun editor() { val (vm, id) = setup(); vm.push(Route.Edit(id)); shot("07_editor", 1000) }
 
     companion object {

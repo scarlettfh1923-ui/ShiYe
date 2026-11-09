@@ -95,17 +95,24 @@ fun HomeScreen(vm: AppVm) {
                     }
                 }
                 if (!wide) HomeNav(vm, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 16.dp).padding(bottom = 24.dp))
+                val clipping by vm.clip.collectAsState()
+                ClipboardWatcher(vm, enabled = clipping == null && !showImport)
+                ClipPromptBar(vm.clipPrompt.takeIf { clipping == null }, onFetch = { vm.clipPrompt = null; vm.startClip(it) }, onDismiss = { vm.clipPrompt = null },
+                    modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = if (wide) 24.dp else 100.dp))
             }
         }
     }
 
     if (showImport) Sheet({ showImport = false }) {
         Text("存入拾页", color = P.text, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp, top = 4.dp))
+        PasteLinkField(onGo = { showImport = false; vm.startClip(it) }, onInvalid = { vm.toast("这不像网页链接，检查一下再试") })
+        Spacer(Modifier.height(4.dp))
         SheetAction(R.drawable.ic_folder, "从文件选择（md / html / zip）") { showImport = false; picker.launch(arrayOf("*/*")) }
         SheetAction(R.drawable.ic_clipboard, "粘贴剪贴板里的文字") {
             showImport = false
             val t = (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString()
-            if (t.isNullOrBlank()) vm.toast("剪贴板里没有文字") else vm.importText(t)
+            val link = ClipUrl.find(t)
+            if (t.isNullOrBlank()) vm.toast("剪贴板里没有文字") else if (link != null) vm.startClip(link) else vm.importText(t)
         }
         Row(Modifier.padding(8.dp, 8.dp).fillMaxWidth().clip(Shapes.box).background(P.accentSoft).padding(16.dp)) {
             Ic(R.drawable.ic_wechat, P.accent, 20); Spacer(Modifier.width(12.dp))

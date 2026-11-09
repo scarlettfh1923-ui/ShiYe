@@ -36,6 +36,13 @@ class ImportActivity : ComponentActivity() {
             Intent.ACTION_SEND_MULTIPLE -> @Suppress("DEPRECATION") src.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris += it }
         }
         if (uris.isEmpty() && text.isNullOrBlank()) { Toast.makeText(this, "没有收到可以保存的内容", Toast.LENGTH_SHORT).show(); finish(); return }
+        // 分享进来的是一个网页链接（浏览器、知乎、豆瓣、微信「复制链接」后分享）：交给主界面去抓取正文和图片
+        val link = if (uris.isEmpty() && !html) ClipUrl.find(text) else null
+        if (link != null) {
+            PendingClip.offer(link)          // 进程内传递，不放进 Intent
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            finish(); return
+        }
         val limited = uris.take(20)
         val source = if (action == Intent.ACTION_VIEW) "打开" else "分享"
         Toast.makeText(this, "正在存入拾页…", Toast.LENGTH_SHORT).show()
